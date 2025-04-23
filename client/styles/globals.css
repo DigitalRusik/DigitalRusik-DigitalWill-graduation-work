@@ -5,17 +5,26 @@ body,
   margin: 0;
   padding: 0;
 }
-.center-container {
+
+
+.center-content {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
-  padding: 2rem;
+  width: 100%;
+  height: 80%;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.center-content {
+.center-will {
+  display: flex;
+  align-items: center;
   width: 100%;
-  max-width: 400px;
+  height: 80%;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 5%;
 }
 
 .form-title {
@@ -50,4 +59,32 @@ body,
   background: none;
   border: none;
   cursor: pointer;
+}
+
+.space-y-4 {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.head-page {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.main-container {
+  height: 100%;
+}
+
+.exist-acc {
+  margin: 20px;
+}
+
+.error-text {
+  color: red;
+}
+
+.exit-button {
+  margin-left: 10%;
 }

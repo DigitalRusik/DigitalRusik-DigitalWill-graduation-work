@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/router';
+import Link from 'next/link';
 
 export default function CreateWill() {
   const [owner, setOwner] = useState('');
@@ -10,11 +11,20 @@ export default function CreateWill() {
   const router = useRouter();
 
   useEffect(() => {
-    const username = localStorage.getItem('username');
-    if (!username) {
-      router.push('/');
+    const storedUser = localStorage.getItem('user');
+    if (!storedUser) {
+      router.push('/login');
+    } else {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        setOwner(parsedUser.email); // или parsedUser.id, если нужно
+      } catch (err) {
+        console.error('Ошибка при парсинге пользователя:', err);
+        router.push('/login');
+      }
     }
   }, []);
+  
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,41 +39,54 @@ export default function CreateWill() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-8">
-      <h2 className="text-2xl font-semibold mb-4">Создание завещания</h2>
-      <form onSubmit={handleSubmit} className="w-full max-w-md space-y-4">
-        <input
-          className="w-full border rounded p-2"
-          type="text"
-          placeholder="Адрес владельца"
-          value={owner}
-          onChange={(e) => setOwner(e.target.value)}
-        />
-        <input
-          className="w-full border rounded p-2"
-          type="text"
-          placeholder="Адрес получателя"
-          value={recipient}
-          onChange={(e) => setRecipient(e.target.value)}
-        />
-        <input
-          className="w-full border rounded p-2"
-          type="text"
-          placeholder="Хэш зашифрованных данных"
-          value={dataHash}
-          onChange={(e) => setDataHash(e.target.value)}
-        />
-        <input
-          className="w-full border rounded p-2"
-          type="date"
-          placeholder="Дата разблокировки"
-          value={unlockDate}
-          onChange={(e) => setUnlockDate(e.target.value)}
-        />
-        <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded-xl">
-          Сохранить завещание
-        </button>
-      </form>
+    <main className="main-container">
+      <div className="head-page">
+        <h2>Создание завещания</h2>
+      </div>
+      <hr></hr>
+      <div className="exit-button">
+        <Link href="/dashboard">
+          <button className="bg-blue-600 text-white px-4 py-2 rounded-xl">
+            Обратно на главную страницу
+          </button>
+        </Link>
+      </div>
+
+      <div className="center-will">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input
+            className="w-full border rounded p-2"
+            type="text"
+            placeholder="Адрес владельца"
+            value={owner}
+            onChange={(e) => setOwner(e.target.value)}
+          />
+          <input
+            className="w-full border rounded p-2"
+            type="text"
+            placeholder="Адрес получателя"
+            value={recipient}
+            onChange={(e) => setRecipient(e.target.value)}
+          />
+          <input
+            className="w-full border rounded p-2"
+            type="text"
+            placeholder="Хэш зашифрованных данных"
+            value={dataHash}
+            onChange={(e) => setDataHash(e.target.value)}
+          />
+          <input
+            className="w-full border rounded p-2"
+            type="date"
+            placeholder="Дата разблокировки"
+            value={unlockDate}
+            onChange={(e) => setUnlockDate(e.target.value)}
+          />
+          <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded-xl">
+            Сохранить завещание
+          </button>
+        </form>
+      </div>
     </main>
   );
 }
