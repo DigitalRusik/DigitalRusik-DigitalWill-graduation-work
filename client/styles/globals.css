@@ -99,6 +99,7 @@ body,
 
 .error-text {
   color: red;
+  font-size: 24px;
 }
 
 .exit-button {
