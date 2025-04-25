@@ -12,9 +12,11 @@ export default function Containers() {
   const [totalSizeMB, setTotalSizeMB] = useState(0);
   const [error, setError] = useState('');
   const [containers, setContainers] = useState<any[]>([]);
-  const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [modalMode, setModalMode] = useState<'delete' | 'download' | null>(null);
   const [password, setPassword] = useState('');
-  const [containerToDelete, setContainerToDelete] = useState<number | null>(null);
+  const [targetContainerId, setTargetContainerId] = useState<number | null>(null);
+  const [targetFileName, setTargetFileName] = useState('');
 
   const router = useRouter();
 
@@ -80,7 +82,7 @@ export default function Containers() {
       return;
     }
     if (!mainFile) {
-      setError('Ошибка! Загружен неправильный тип основного файла или он отсутствует.');
+      setError('Необходимо загрузить основной файл.');
       return;
     }
     if (totalSizeMB > 50) {
@@ -109,33 +111,70 @@ export default function Containers() {
     }
   };
 
-  const handleDeleteRequest = (id: number) => {
-    setContainerToDelete(id);
-    setShowPasswordPrompt(true);
+  const openPasswordModal = (mode: 'delete' | 'download', containerId: number, fileName?: string) => {
+    setModalMode(mode);
+    setTargetContainerId(containerId);
+    if (fileName) setTargetFileName(fileName);
+    setPassword('');
+    setError('');
+    setShowModal(true);
   };
 
-  const handleConfirmDelete = async () => {
+  const handleModalConfirm = async () => {
+    if (!password || !user || targetContainerId === null) return;
+
     try {
       const verify = await axios.post('http://localhost:5000/api/containers/verify-password', {
         userId: user.id,
         password,
       });
 
-      if (verify.data.success) {
-        await axios.delete(`http://localhost:5000/api/containers/${containerToDelete}`);
-        setContainers(containers.filter(c => c.id !== containerToDelete));
-        setShowPasswordPrompt(false);
-        setPassword('');
-        alert('Контейнер удалён');
-      } else {
-        setError('Неверный пароль');
+      if (!verify.data.success) {
+        setError('Ошибка: неверный пароль');
+        return;
       }
-    } catch (err) {
-      console.error('Ошибка при удалении:', err);
-      setError('Ошибка при удалении контейнера');
+
+      if (modalMode === 'delete') {
+        await axios.delete(`http://localhost:5000/api/containers/${targetContainerId}`);
+        setContainers(containers.filter(c => c.id !== targetContainerId));
+        //alert('Контейнер удалён');
+      }
+
+      if (modalMode === 'download') {
+        const response = await axios.post(
+          `http://localhost:5000/api/containers/download/${targetContainerId}`,
+          {
+            userId: user.id,
+            password,
+            fileName: targetFileName,
+          },
+          { responseType: 'blob' }
+        );
+
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', targetFileName);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      }
+
+      setShowModal(false);
+      setPassword('');
+      setTargetFileName('');
+    } catch (err: any) {
+      if (err.response?.status === 401) {
+        setError('Ошибка: неверный пароль');
+      } else {
+        console.error(err);
+        setError('Ошибка при выполнении действия');
+      }
     }
   };
-
+  //----------------------------------------------------------------------------
+  //--------------------------HTML----------------------------------------------
+  //----------------------------------------------------------------------------
   return (
     <main className="main-container">
         <div className="head-page">
@@ -198,43 +237,66 @@ export default function Containers() {
           <div key={container.id} className="border p-4 rounded mb-3">
             <p><strong>Название:</strong> {container.name}</p>
             <p><strong>Создан:</strong> {new Date(container.created_at).toLocaleString()}</p>
-            <p><strong>Размер:</strong> {
-              JSON.parse(container.file_path)
-                .reduce((acc: number, f: any) => acc + (f.size || 0), 0) / 1024
-            } КБ</p>
-            <button
-              className="text-red-600 mt-2 underline"
-              onClick={() => handleDeleteRequest(container.id)}
-            >
-              Удалить
-            </button>
-          </div>
-        ))}
+            <p><strong>Файлы:</strong></p>
+          <ul className="pl-4">
+            {JSON.parse(container.file_path).map((file: any) => (
+              <li key={file.name} className="text-sm flex justify-between items-center gap-4">
+                <span>{file.name}</span>
+                <button
+                  className="text-blue-600 underline"
+                  onClick={() => openPasswordModal('download', container.id, file.name)}
+                >
+                  Скачать
+                </button>
+              </li>
+            ))}
+          </ul>
+          <button
+            className="text-red-600 mt-2 underline"
+            onClick={() => openPasswordModal('delete', container.id)}
+          >
+            Удалить контейнер
+          </button>
         </div>
-        {showPasswordPrompt && (
-          <div className="fixed top-0 left-0 right-0 bottom-0 bg-black/50 flex items-center justify-center">
-            <div className="bg-white p-6 rounded shadow-md max-w-sm w-full">
-              <h3 className="text-lg font-semibold mb-4">Подтвердите пароль для удаления</h3>
+      ))}
+      </div>
+      </div>
+      <div className={`modal ${!showModal ? 'hidden' : ''}`}>
+        {showModal && (
+          <div className="modal-box">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 animate-fade-in">
+              <div className="flex items-center gap-3 mb-4">
+                <span className="text-2xl">🔒</span>
+                <h3 className="text-lg font-semibold">
+                  {modalMode === 'delete' ? 'Удаление контейнера' : 'Скачивание файла'}
+                </h3>
+              </div>
+
+              <p className="text-sm mb-2 text-gray-600">Введите пароль для подтверждения действия.</p>
+
               <input
                 type="password"
-                placeholder="Введите пароль"
-                className="w-full border p-2 rounded mb-4"
+                placeholder="Пароль"
+                className="w-full border border-gray-300 p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
-              <div className="flex justify-between">
+
+              {error && <div className="error-text">{error}</div>}
+
+              <div className="modal-buttons">
                 <button
-                  onClick={handleConfirmDelete}
-                  className="bg-red-600 text-white px-4 py-2 rounded"
+                  onClick={handleModalConfirm}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition"
                 >
-                  Удалить
+                  Подтвердить
                 </button>
                 <button
                   onClick={() => {
-                    setShowPasswordPrompt(false);
+                    setShowModal(false);
                     setPassword('');
+                    setError('');
                   }}
-                  className="bg-gray-300 px-4 py-2 rounded"
                 >
                   Отмена
                 </button>
@@ -243,6 +305,7 @@ export default function Containers() {
           </div>
         )}
       </div>
+      
     </main>
   );
 }

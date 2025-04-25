@@ -6,6 +6,7 @@ const path = require('path');
 const crypto = require('crypto');
 const multer = require('multer');
 const bcrypt = require('bcryptjs');
+const mime = require('mime-types');
 
 const upload = multer({ storage: multer.memoryStorage() }); // шифруем из памяти
 
@@ -103,7 +104,44 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// GET /api/containers/:userId
+// Загрузка содержимого контейнеров
+router.post('/download/:containerId', async (req, res) => {
+  const { containerId } = req.params;
+  const { userId, password, fileName } = req.body;
+
+  try {
+    // Проверка пароля
+    const user = await pool.query('SELECT password, encryption_key FROM users WHERE id = $1', [userId]);
+    if (user.rows.length === 0) return res.status(404).json({ message: 'Пользователь не найден' });
+
+    const isMatch = await bcrypt.compare(password, user.rows[0].password);
+    if (!isMatch) return res.status(401).json({ message: 'Неверный пароль' });
+
+    const encryptionKey = user.rows[0].encryption_key;
+
+    const containerRes = await pool.query('SELECT file_path FROM containers WHERE id = $1', [containerId]);
+    const fileArray = JSON.parse(containerRes.rows[0].file_path);
+    const fileMeta = fileArray.find(f => f.name === fileName);
+    if (!fileMeta) return res.status(404).json({ message: 'Файл не найден в контейнере' });
+
+    // Дешифровка
+    const buffer = fs.readFileSync(fileMeta.path);
+    const key = crypto.scryptSync(encryptionKey, 'salt', 32);
+    const iv = Buffer.from(fileMeta.iv, 'hex');
+    const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+    const decrypted = Buffer.concat([decipher.update(buffer), decipher.final()]);
+
+    const mimeType = mime.lookup(fileMeta.name) || 'application/octet-stream';
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Disposition', `attachment; filename="${fileMeta.name}"`);
+    res.send(decrypted);
+  } catch (err) {
+    console.error('Ошибка при скачивании файла:', err);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
+// GET /api/containers/:userId Получение списка контейнеров
 router.get('/:userId', async (req, res) => {
   const { userId } = req.params;
   try {
