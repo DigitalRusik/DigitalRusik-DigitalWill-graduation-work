@@ -37,12 +37,13 @@ export default function Register() {
         },
         body: JSON.stringify(formData),
       });
-      console.log('Отправляемые данные:', formData);
+      //console.log('Отправляемые данные:', formData);
       const data = await response.json();
       if (!response.ok) {
         setError(data.message || 'Ошибка регистрации');
         return;
     }
+    localStorage.setItem('user', JSON.stringify(data));
     router.push('/dashboard');
   } catch (error) {
       console.error('Ошибка при регистрации:', error);

@@ -25,24 +25,35 @@ export default function Dashboard() {
   return (
     <main className="main-container">
       <div className="head-page">
-      <h1 className="text-2xl font-semibold mb-6">Добро пожаловать, {username}!</h1>
+        <h1 className="text-2xl font-semibold mb-6">Добро пожаловать, {username}!</h1>
       </div>
-      <hr></hr>
-      <button
-        onClick={() => {
-          localStorage.removeItem('user');
-          router.push('/login');
-        }}
-        className="exit-button"
-      >
-        Выйти
-      </button>
-      <div className="head-page">
-        <Link href="/create">
-          <button className="bg-blue-600 text-white px-4 py-2 rounded-xl">
-            Создать завещание
-          </button>
-        </Link>
+      <div>
+        <hr></hr>
+      </div>
+      <div className="div-body">
+        <button
+          onClick={() => {
+            localStorage.removeItem('user');
+            router.push('/login');
+          }}
+          className="exit-button"
+        >
+          Выйти
+        </button>
+        <div className="main-buttons">
+          <Link href="/create">
+            <button className="bg-blue-600 text-white px-4 py-2 rounded-xl">
+              Создать завещание
+            </button>
+          </Link>
+        </div>
+        <div className="main-buttons">
+          <Link href="/containers">
+            <button className="bg-purple-600 text-white px-4 py-2 rounded-xl mt-4">
+              Мои контейнеры
+            </button>
+          </Link>
+        </div>
       </div>
     </main>
   );

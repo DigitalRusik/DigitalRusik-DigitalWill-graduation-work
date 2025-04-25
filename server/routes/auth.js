@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 
 function generateEthAddress() {
   const chars = 'abcdef0123456789';
@@ -17,12 +18,13 @@ router.post('/register', async (req, res) => {
   const { firstName, lastName, patronymic, email, password } = req.body;
 
   try {
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const ethAddress = generateEthAddress();
+    const hashedPassword = await bcrypt.hash(password, 10); // Хэшированный пароль
+    const encryptionKey = crypto.randomBytes(32).toString('hex'); // 256-битный AES-ключ
+    const ethAddress = generateEthAddress(); // Адрес пользователя для смарт-контрактов
 
     const result = await pool.query(
-      'INSERT INTO users (first_name, last_name, patronymic, email, password, eth_address) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
-      [firstName, lastName, patronymic, email, hashedPassword, ethAddress]
+      'INSERT INTO users (first_name, last_name, patronymic, email, password, eth_address, encryption_key) VALUES ($1, $2, $3, $4, $5, $6, %7) RETURNING id',
+      [firstName, lastName, patronymic, email, hashedPassword, ethAddress, encryptionKey]
     );
 
     res.status(201).json({ message: 'Пользователь зарегистрирован', userId: result.rows[0].id });

@@ -73,7 +73,23 @@ body,
   align-items: flex-start;
 }
 
+.div-body {
+  flex: 1;
+  background-color: #d1d5db;
+  margin-left: 15%;
+  margin-right: 15%;
+}
+
+.main-buttons {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  margin-top: 1%;
+}
+
 .main-container {
+  display: flex;
+  flex-direction: column;
   height: 100%;
 }
 
