@@ -21,13 +21,19 @@ router.post('/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10); // Хэшированный пароль
     const encryptionKey = crypto.randomBytes(32).toString('hex'); // 256-битный AES-ключ
     const ethAddress = generateEthAddress(); // Адрес пользователя для смарт-контрактов
-
     const result = await pool.query(
-      'INSERT INTO users (first_name, last_name, patronymic, email, password, eth_address, encryption_key) VALUES ($1, $2, $3, $4, $5, $6, %7) RETURNING id',
+      'INSERT INTO users (first_name, last_name, patronymic, email, password, eth_address, encryption_key) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id',
       [firstName, lastName, patronymic, email, hashedPassword, ethAddress, encryptionKey]
     );
+    const result2 = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    const user = result2.rows[0];
 
-    res.status(201).json({ message: 'Пользователь зарегистрирован', userId: result.rows[0].id });
+    res.status(201).json({ message: 'Пользователь зарегистрирован', userId: result.rows[0].id,
+      id: user.id,
+      email: user.email,
+      fullName: `${user.last_name} ${user.first_name} ${user.patronymic}`,
+      ethAddress: user.eth_address
+     });
   } catch (err) {
     console.error(err);
     if (err.code === '23505') {

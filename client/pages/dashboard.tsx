@@ -25,7 +25,7 @@ export default function Dashboard() {
   return (
     <main className="main-container">
       <div className="head-page">
-        <h1 className="text-2xl font-semibold mb-6">Добро пожаловать, {username}!</h1>
+        <h1>Добро пожаловать, {username}!</h1>
       </div>
       <div>
         <hr></hr>
@@ -53,6 +53,13 @@ export default function Dashboard() {
               Мои контейнеры
             </button>
           </Link>
+        </div>
+        <div className="main-buttons">
+        <Link href="/wills">
+          <button className="bg-green-600 text-white px-4 py-2 rounded-xl mt-4">
+            Мои завещания
+          </button>
+        </Link>
         </div>
       </div>
     </main>

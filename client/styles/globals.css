@@ -158,3 +158,12 @@ body,
 .modal.hidden {
   display: none;
 }
+
+.error.hidden {
+  display: none;
+}
+
+.hr-padding {
+  padding-top: 3%;
+  padding-bottom: 3%;
+}

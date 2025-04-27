@@ -13,6 +13,8 @@ const authRoutes = require('./routes/auth');
 app.use('/api/auth', authRoutes);
 const containersRouter = require('./routes/containers');
 app.use('/api/containers', containersRouter);
+const willsRoutes = require('./routes/wills');
+app.use('/api/wills', willsRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

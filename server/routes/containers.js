@@ -156,4 +156,68 @@ router.get('/:userId', async (req, res) => {
   }
 });
 
+// Загрузка зашифрованного файла
+router.post('/download/:containerId', async (req, res) => {
+  const { containerId } = req.params;
+  const { fileName } = req.body;
+
+  try {
+    const containerResult = await pool.query('SELECT * FROM containers WHERE id = $1', [containerId]);
+    if (containerResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Контейнер не найден' });
+    }
+
+    const container = containerResult.rows[0];
+    const files = JSON.parse(container.file_path);
+
+    const fileMeta = files.find(f => f.name === fileName);
+    if (!fileMeta) {
+      return res.status(404).json({ message: 'Файл не найден в контейнере' });
+    }
+
+    const filePath = path.join(__dirname, '..', 'uploads', fileMeta.path);
+    const encryptedData = fs.readFileSync(filePath);
+
+    const keyBuffer = Buffer.from(container.aes_key, 'hex');
+    const iv = encryptedData.slice(0, 16);
+    const encryptedContent = encryptedData.slice(16);
+
+    const decipher = crypto.createDecipheriv('aes-256-cbc', keyBuffer, iv);
+    let decrypted = decipher.update(encryptedContent);
+    decrypted = Buffer.concat([decrypted, decipher.final()]);
+
+    res.setHeader('Content-Disposition', `attachment; filename="${fileMeta.name}"`);
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.send(decrypted);
+
+  } catch (err) {
+    console.error('Ошибка при скачивании файла:', err);
+    res.status(500).json({ message: 'Ошибка сервера при скачивании файла' });
+  }
+});
+
+// Получить контейнер по названию
+router.get('/by-name/:name', async (req, res) => {
+  const { name } = req.params;
+
+  try {
+    const result = await pool.query('SELECT * FROM containers WHERE name = $1', [name]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Контейнер не найден' });
+    }
+
+    const container = result.rows[0];
+    const files = JSON.parse(container.file_path).map(f => ({
+      name: f.name,
+      container_id: container.id
+    }));
+
+    res.json({ files });
+  } catch (err) {
+    console.error('Ошибка при получении контейнера по названию:', err);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
 module.exports = router;

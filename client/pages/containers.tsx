@@ -13,17 +13,19 @@ export default function Containers() {
   const [error, setError] = useState('');
   const [containers, setContainers] = useState<any[]>([]);
   const [showModal, setShowModal] = useState(false);
-  const [modalMode, setModalMode] = useState<'delete' | 'download' | null>(null);
+  const [modalMode, setModalMode] = useState<'delete' | 'view' | null>(null);
   const [password, setPassword] = useState('');
+  const [passwordForDownloads, setPasswordForDownloads] = useState('');
   const [targetContainerId, setTargetContainerId] = useState<number | null>(null);
   const [targetFileName, setTargetFileName] = useState('');
+  const [unlockedContainers, setUnlockedContainers] = useState<number[]>([]);
 
   const router = useRouter();
 
   useEffect(() => {
     const stored = localStorage.getItem('user');
     if (!stored) {
-      router.push('/');
+      router.push('/login');
     } else {
       const parsed = JSON.parse(stored);
       setUser(parsed);
@@ -97,7 +99,6 @@ export default function Containers() {
     additionalFiles.forEach((file) => {
       formData.append('extraFiles', file);
     });
-
     try {
       await axios.post('http://localhost:5000/api/containers', formData);
       alert('Контейнер создан');
@@ -111,7 +112,7 @@ export default function Containers() {
     }
   };
 
-  const openPasswordModal = (mode: 'delete' | 'download', containerId: number, fileName?: string) => {
+  const openPasswordModal = (mode: 'delete' | 'view', containerId: number, fileName?: string) => {
     setModalMode(mode);
     setTargetContainerId(containerId);
     if (fileName) setTargetFileName(fileName);
@@ -137,27 +138,12 @@ export default function Containers() {
       if (modalMode === 'delete') {
         await axios.delete(`http://localhost:5000/api/containers/${targetContainerId}`);
         setContainers(containers.filter(c => c.id !== targetContainerId));
-        //alert('Контейнер удалён');
+        alert('Контейнер удалён');
       }
 
-      if (modalMode === 'download') {
-        const response = await axios.post(
-          `http://localhost:5000/api/containers/download/${targetContainerId}`,
-          {
-            userId: user.id,
-            password,
-            fileName: targetFileName,
-          },
-          { responseType: 'blob' }
-        );
-
-        const url = window.URL.createObjectURL(new Blob([response.data]));
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', targetFileName);
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
+      if (modalMode === 'view') { 
+        setUnlockedContainers((prev) => [...prev, targetContainerId!]);
+        setPasswordForDownloads(password); 
       }
 
       setShowModal(false);
@@ -172,6 +158,32 @@ export default function Containers() {
       }
     }
   };
+
+  const handleDownload = async (containerId: number, fileName: string, pwd?: string) => {
+    try {
+      const response = await axios.post(
+        `http://localhost:5000/api/containers/download/${containerId}`,
+        {
+          userId: user.id,
+          password: pwd || passwordForDownloads,
+          fileName,
+        },
+        { responseType: 'blob' }
+      );
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      console.error('Ошибка при скачивании файла:', err);
+      setError('Ошибка при скачивании');
+    }
+  };
+
   //----------------------------------------------------------------------------
   //--------------------------HTML----------------------------------------------
   //----------------------------------------------------------------------------
@@ -220,37 +232,51 @@ export default function Containers() {
           <div className="text-sm text-gray-700">
             Общий размер: {totalSizeMB.toFixed(2)} МБ (максимум 50 МБ)
           </div>
-
-          {error && <div className="error-text">{error}</div>}
-
+          <div className="main-buttons">
           <button
             type="submit"
             className="bg-blue-600 text-white px-4 py-2 rounded"
           >
             Создать контейнер
           </button>
+        </div>
         </form>
-
+        <div className={`error ${showModal ? 'hidden' : ''}`}>
+          {error && <div className="error-text">{error}</div>}
+        </div>
+        <div className="hr-padding">
+          <hr></hr>
+          <hr></hr>
+          <hr></hr>
+        </div>
         <div>
           <h2 className="text-xl font-semibold mb-2">Ваши контейнеры:</h2>
           {containers.map(container => (
           <div key={container.id} className="border p-4 rounded mb-3">
             <p><strong>Название:</strong> {container.name}</p>
             <p><strong>Создан:</strong> {new Date(container.created_at).toLocaleString()}</p>
-            <p><strong>Файлы:</strong></p>
-          <ul className="pl-4">
-            {JSON.parse(container.file_path).map((file: any) => (
-              <li key={file.name} className="text-sm flex justify-between items-center gap-4">
-                <span>{file.name}</span>
-                <button
-                  className="text-blue-600 underline"
-                  onClick={() => openPasswordModal('download', container.id, file.name)}
-                >
-                  Скачать
-                </button>
-              </li>
-            ))}
-          </ul>
+            {unlockedContainers.includes(container.id) ? (
+              <ul className="pl-4">
+                {JSON.parse(container.file_path).map((file: any) => (
+                  <li key={file.name} className="text-sm flex justify-between items-center gap-4">
+                    <span>{file.name}</span>
+                    <button
+                      className="text-blue-600 underline"
+                      onClick={() => handleDownload(container.id, file.name)}
+                    >
+                      Скачать
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <button
+                className="text-blue-600 underline mt-2"
+                onClick={() => openPasswordModal('view', container.id)}
+              >
+                Показать содержимое
+              </button>
+            )}
           <button
             className="text-red-600 mt-2 underline"
             onClick={() => openPasswordModal('delete', container.id)}
@@ -268,7 +294,7 @@ export default function Containers() {
               <div className="flex items-center gap-3 mb-4">
                 <span className="text-2xl">🔒</span>
                 <h3 className="text-lg font-semibold">
-                  {modalMode === 'delete' ? 'Удаление контейнера' : 'Скачивание файла'}
+                  {modalMode === 'delete' ? 'Удаление контейнера' : 'Просмотр содержимого'}
                 </h3>
               </div>
 
