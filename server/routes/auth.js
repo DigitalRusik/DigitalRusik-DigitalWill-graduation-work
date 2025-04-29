@@ -76,3 +76,20 @@ router.post('/login', async (req, res) => {
     res.status(500).json({ message: 'Ошибка сервера' });
   }
 });
+
+// Получение всех пользователей (для wills)
+router.get('/users', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT id, first_name, last_name, patronymic FROM users');
+
+    const users = result.rows.map(user => ({
+      id: user.id,
+      fullName: `${user.last_name} ${user.first_name} ${user.patronymic || ''}`.trim(),
+    }));
+
+    res.json(users);
+  } catch (err) {
+    console.error('Ошибка при получении пользователей:', err);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});

@@ -4,76 +4,68 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 
 export default function Wills() {
-  const [user, setUser] = useState<any>(null);
   const [createdWills, setCreatedWills] = useState([]);
   const [receivedWills, setReceivedWills] = useState([]);
   const [error, setError] = useState('');
-  const router = useRouter();
+  const [userId, setUserId] = useState('');
+  const [UserEthAddress, setUserEthAddress] = useState([]); // Пришлось добавить, возможно ОШИБКА БУДЕТ 
 
   useEffect(() => {
-    const stored = localStorage.getItem('user');
-    if (!stored) {
-      router.push('/login');
-    } else {
-      const parsed = JSON.parse(stored);
-      setUser(parsed);
-      fetchWills(parsed);
-    }
+    const fetchWills = async () => {
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) return;
+  
+      const user = JSON.parse(storedUser);
+      setUserEthAddress(user.ethAddress);
+
+      try {
+        const willsRes = await axios.get(`http://localhost:5000/api/wills/${user.ethAddress}`);
+        const usersRes = await axios.get('http://localhost:5000/api/auth/users');
+  
+        const users = usersRes.data;
+  
+        const created = willsRes.data.created.map((will: any) => ({
+          ...will,
+          recipientFullName: users.find((u: any) => u.email === will.recipient)?.fullName || 'Неизвестно',
+        }));
+  
+        const received = willsRes.data.received.map((will: any) => ({
+          ...will,
+          ownerFullName: users.find((u: any) => u.eth_address === will.owner)?.fullName || 'Неизвестно',
+        }));
+  
+        setCreatedWills(created);
+        setReceivedWills(received);
+  
+      } catch (err) {
+        console.error('Ошибка при получении завещаний:', err);
+      }
+    };
+  
+    fetchWills();
   }, []);
-
-  const fetchWills = async (userData: any) => {
-    try {
-      const created = await axios.get(`http://localhost:5000/api/wills/created/${userData.id}`);
-      setCreatedWills(created.data);
-
-      const received = await axios.get(`http://localhost:5000/api/wills/received/${userData.email}`);
-      setReceivedWills(received.data);
-    } catch (err) {
-      console.error('Ошибка при загрузке завещаний:', err);
-    }
-  };
-
-  const handleAccessWill = async (will: any) => {
-    try {
-      const res = await axios.get(
-        `http://localhost:5000/api/containers/by-name/${encodeURIComponent(will.data_hash)}`
-      );
   
-      const files = res.data.files;
-      if (!files.length) {
-        alert('Файлы контейнера не найдены.');
-        return;
-      }
+
+  const handleDownload = async (willId: string) => {
+    try {
+      const response = await axios.get(`http://localhost:5000/api/containers/download-will/${willId}`, {
+        responseType: 'blob',
+      });
   
-      for (const file of files) {
-        const downloadRes = await axios.post(
-          `http://localhost:5000/api/containers/download/${file.container_id}`,
-          {
-            fileName: file.name,
-          },
-          { responseType: 'blob' }
-        );
-        const blob = new Blob([downloadRes.data]);
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', file.name);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
-      
-      alert('Файлы загружены!');
-    } catch (err) {
-        setError(err);
-      console.error('Ошибка при получении завещания:', err);
-      alert('Ошибка при получении завещания');
+      const blob = new Blob([response.data]);
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute('download', 'container.zip');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Ошибка при скачивании завещания:', error);
+      alert('Ошибка при скачивании завещания');
     }
   };
   
   
-  
-
   return (
     <main className="main-container">
         <div className="head-page">
@@ -93,56 +85,48 @@ export default function Wills() {
             <div className="error-text">
                 {error && <div className="error-text">{error}</div>}
             </div>
-            <div className="mb-8">
-                <h2 className="text-xl font-semibold mb-3">Созданные вами завещания:</h2>
-                {createdWills.length > 0 ? (
-                <ul className="space-y-2">
-                    {createdWills.map((will: any) => (
-                    <li key={will.id} className="border p-4 rounded">
-                        <p><strong>Получатель:</strong> {will.recipient}</p>
-                        <p><strong>Контейнер:</strong> {will.data_hash}</p>
-                        <p><strong>Дата разблокировки:</strong> {new Date(will.unlock_time * 1000).toLocaleDateString()}</p>
+            <section className="w-full max-w-2xl">
+              <h2 className="text-xl font-semibold mb-2">Созданные завещания</h2>
+              {createdWills.length === 0 ? (
+                <p>Нет созданных завещаний</p>
+              ) : (
+                <ul>
+                  {createdWills.map((will: any) => (
+                    <li key={will.id} className="mb-2 border p-2 rounded">
+                      <p>Получатель: {will.recipientFullName}</p>
+                      <p>Контейнер: {will.container_name}</p>
+                      <p>Дата разблокировки: {new Date(will.unlock_date).toLocaleDateString()}</p>
                     </li>
-                    ))}
+                  ))}
                 </ul>
-                ) : (
-                <p>Нет созданных завещаний.</p>
-                )}
-            </div>
+              )}
+            </section>
+
             <hr></hr>
             <hr></hr>
             <hr></hr>
-            <div>
-                <h2 className="text-xl font-semibold mb-3">Завещания, оставленные вам:</h2>
-                {receivedWills.length > 0 ? (
-                <ul className="space-y-2">
-                    {receivedWills.map((will: any) => {
-                    const isUnlocked = will.unlock_time * 1000 <= Date.now();
-                    return (
-                        <li key={will.id} className="border p-4 rounded flex justify-between items-center">
-                        <div>
-                            <p><strong>От кого:</strong> {will.owner}</p>
-                            <p><strong>Контейнер:</strong> {will.data_hash}</p>
-                            <p><strong>Дата разблокировки:</strong> {new Date(will.unlock_time * 1000).toLocaleDateString()}</p>
-                        </div>
-                        {isUnlocked ? (
-                            <button
-                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
-                            onClick={() => handleAccessWill(will)}
-                            >
-                            Получить завещание
-                            </button>
-                        ) : (
-                            <p className="text-gray-500 text-sm">Завещание пока недоступно</p>
-                        )}
-                        </li>
-                    );
-                    })}
+            <section className="w-full max-w-2xl mt-8">
+              <h2 className="text-xl font-semibold mb-2">Завещания, оставленные вам</h2>
+              {receivedWills.length === 0 ? (
+                <p>Нет завещаний</p>
+              ) : (
+                <ul>
+                  {receivedWills.map((will: any) => (
+                    <li key={will.id} className="mb-2 border p-2 rounded">
+                      <p>Отправитель: {will.ownerFullName}</p>
+                      <p>Контейнер: {will.container_name}</p>
+                      <p>Дата разблокировки: {new Date(will.unlock_date).toLocaleDateString()}</p>
+                      <button
+                        onClick={() => handleDownload(will.id)}
+                        className="mt-2 bg-green-600 text-white px-4 py-2 rounded"
+                      >
+                        Получить завещание
+                      </button>
+                    </li>
+                  ))}
                 </ul>
-                ) : (
-                <p>Нет завещаний, оставленных вам.</p>
-                )}
-            </div>
+              )}
+            </section>
       </div>
     </main>
   );

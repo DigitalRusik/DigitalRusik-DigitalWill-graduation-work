@@ -7,9 +7,11 @@ const crypto = require('crypto');
 const multer = require('multer');
 const bcrypt = require('bcryptjs');
 const mime = require('mime-types');
+const archiver = require('archiver');
 
-const upload = multer({ storage: multer.memoryStorage() }); // шифруем из памяти
+const upload = multer({ storage: multer.memoryStorage() });
 
+// ===== Шифрование AES при загрузке =====
 const encryptAES = (buffer, password) => {
   const key = crypto.scryptSync(password, 'salt', 32);
   const iv = crypto.randomBytes(16);
@@ -18,9 +20,10 @@ const encryptAES = (buffer, password) => {
   return { encryptedData: encrypted, iv: iv.toString('hex') };
 };
 
+// ===== Создание контейнера =====
 router.post('/', upload.fields([
   { name: 'mainFile', maxCount: 1 },
-  { name: 'extraFiles', maxCount: 20 } // ограничение до 20 доп. файлов
+  { name: 'extraFiles', maxCount: 20 }
 ]), async (req, res) => {
   try {
     const { containerName, userId } = req.body;
@@ -29,21 +32,17 @@ router.post('/', upload.fields([
 
     if (!mainFile) return res.status(400).json({ message: 'Основной файл обязателен' });
 
-
-    // Получение ключа из БД
     const userResult = await pool.query('SELECT encryption_key FROM users WHERE id = $1', [userId]);
     const encryptionKey = userResult.rows[0]?.encryption_key;
     if (!encryptionKey) return res.status(400).json({ message: 'Ключ шифрования не найден' });
 
     const filePaths = [];
 
-    // Обработка основного файла
     const mainEnc = encryptAES(mainFile.buffer, encryptionKey);
     const mainPath = `uploads/${Date.now()}-main-${mainFile.originalname}`;
     fs.writeFileSync(mainPath, mainEnc.encryptedData);
     filePaths.push({ name: mainFile.originalname, path: mainPath, iv: mainEnc.iv });
 
-    // Обработка доп. файлов
     for (const file of extraFiles) {
       const enc = encryptAES(file.buffer, encryptionKey);
       const filePath = `uploads/${Date.now()}-${file.originalname}`;
@@ -51,21 +50,19 @@ router.post('/', upload.fields([
       filePaths.push({ name: file.originalname, path: filePath, iv: enc.iv });
     }
 
-    // Сохраняем контейнер
     await pool.query(
       'INSERT INTO containers (user_id, name, file_path, iv, created_at) VALUES ($1, $2, $3, $4, NOW())',
       [userId, containerName, JSON.stringify(filePaths), '']
     );
 
     res.status(201).json({ message: 'Контейнер успешно создан' });
-
   } catch (err) {
     console.error('Ошибка создания контейнера:', err);
     res.status(500).json({ message: 'Ошибка сервера' });
   }
-
 });
 
+// ===== Проверка пароля пользователя =====
 router.post('/verify-password', async (req, res) => {
   const { userId, password } = req.body;
 
@@ -83,15 +80,14 @@ router.post('/verify-password', async (req, res) => {
   }
 });
 
+// ===== Удаление контейнера =====
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
 
   try {
-    // Получаем путь к файлам
     const container = await pool.query('SELECT file_path FROM containers WHERE id = $1', [id]);
     const fileArray = JSON.parse(container.rows[0].file_path);
 
-    // Удаляем файлы из папки
     for (const file of fileArray) {
       fs.unlinkSync(file.path);
     }
@@ -104,45 +100,69 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// Загрузка содержимого контейнеров
-router.post('/download/:containerId', async (req, res) => {
-  const { containerId } = req.params;
-  const { userId, password, fileName } = req.body;
+// ===== Скачивание файла по завещанию =====
+router.get('/download-will/:willId', async (req, res) => {
+  const { willId } = req.params;
 
   try {
-    // Проверка пароля
-    const user = await pool.query('SELECT password, encryption_key FROM users WHERE id = $1', [userId]);
-    if (user.rows.length === 0) return res.status(404).json({ message: 'Пользователь не найден' });
+    // 1. Получаем завещание
+    const willResult = await pool.query('SELECT owner, data_hash FROM wills WHERE id = $1', [willId]);
+    if (willResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Завещание не найдено' });
+    }
+    const { owner: ownerAddress, data_hash: containerName } = willResult.rows[0];
 
-    const isMatch = await bcrypt.compare(password, user.rows[0].password);
-    if (!isMatch) return res.status(401).json({ message: 'Неверный пароль' });
+    // 2. Получаем encryption key
+    const userResult = await pool.query('SELECT encryption_key FROM users WHERE eth_address = $1', [ownerAddress]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Пользователь не найден' });
+    }
+    const encryptionKey = userResult.rows[0].encryption_key;
+    const keyBuffer = crypto.scryptSync(encryptionKey, 'salt', 32);
 
-    const encryptionKey = user.rows[0].encryption_key;
+    // 3. Получаем файлы контейнера
+    const containerResult = await pool.query('SELECT file_path FROM containers WHERE name = $1', [containerName]);
+    if (containerResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Контейнер не найден' });
+    }
 
-    const containerRes = await pool.query('SELECT file_path FROM containers WHERE id = $1', [containerId]);
-    const fileArray = JSON.parse(containerRes.rows[0].file_path);
-    const fileMeta = fileArray.find(f => f.name === fileName);
-    if (!fileMeta) return res.status(404).json({ message: 'Файл не найден в контейнере' });
+    const filesArray = JSON.parse(containerResult.rows[0].file_path);
+    if (!Array.isArray(filesArray) || filesArray.length === 0) {
+      return res.status(404).json({ message: 'Файлы в контейнере не найдены' });
+    }
 
-    // Дешифровка
-    const buffer = fs.readFileSync(fileMeta.path);
-    const key = crypto.scryptSync(encryptionKey, 'salt', 32);
-    const iv = Buffer.from(fileMeta.iv, 'hex');
-    const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-    const decrypted = Buffer.concat([decipher.update(buffer), decipher.final()]);
+    // 4. Готовим архив
+    res.setHeader('Content-Disposition', `attachment; filename=${containerName}.zip`);
+    res.setHeader('Content-Type', 'application/zip');
 
-    const mimeType = mime.lookup(fileMeta.name) || 'application/octet-stream';
-    res.setHeader('Content-Type', mimeType);
-    res.setHeader('Content-Disposition', `attachment; filename="${fileMeta.name}"`);
-    res.send(decrypted);
+    const archive = archiver('zip', { zlib: { level: 9 } });
+    archive.pipe(res);
+
+    for (const file of filesArray) {
+      const encryptedFileRelativePath = file.path;
+      const ivHex = file.iv;
+      const fileName = file.name;
+
+      const fullFilePath = path.resolve(__dirname, '..', encryptedFileRelativePath);
+      const encryptedData = fs.readFileSync(fullFilePath);
+
+      const ivBuffer = Buffer.from(ivHex, 'hex');
+      const decipher = crypto.createDecipheriv('aes-256-cbc', keyBuffer, ivBuffer);
+      const decryptedData = Buffer.concat([decipher.update(encryptedData), decipher.final()]);
+
+      archive.append(decryptedData, { name: fileName });
+    }
+
+    await archive.finalize();
+
   } catch (err) {
-    console.error('Ошибка при скачивании файла:', err);
-    res.status(500).json({ message: 'Ошибка сервера' });
+    console.error('Ошибка при скачивании завещания:', err);
+    res.status(500).json({ message: 'Ошибка сервера при скачивании файла' });
   }
 });
 
-// GET /api/containers/:userId Получение списка контейнеров
-router.get('/:userId', async (req, res) => {
+// ===== Получение списка контейнеров пользователя =====
+router.get('/user/:userId', async (req, res) => {
   const { userId } = req.params;
   try {
     const result = await pool.query(
@@ -156,53 +176,12 @@ router.get('/:userId', async (req, res) => {
   }
 });
 
-// Загрузка зашифрованного файла
-router.post('/download/:containerId', async (req, res) => {
-  const { containerId } = req.params;
-  const { fileName } = req.body;
-
-  try {
-    const containerResult = await pool.query('SELECT * FROM containers WHERE id = $1', [containerId]);
-    if (containerResult.rows.length === 0) {
-      return res.status(404).json({ message: 'Контейнер не найден' });
-    }
-
-    const container = containerResult.rows[0];
-    const files = JSON.parse(container.file_path);
-
-    const fileMeta = files.find(f => f.name === fileName);
-    if (!fileMeta) {
-      return res.status(404).json({ message: 'Файл не найден в контейнере' });
-    }
-
-    const filePath = path.join(__dirname, '..', 'uploads', fileMeta.path);
-    const encryptedData = fs.readFileSync(filePath);
-
-    const keyBuffer = Buffer.from(container.aes_key, 'hex');
-    const iv = encryptedData.slice(0, 16);
-    const encryptedContent = encryptedData.slice(16);
-
-    const decipher = crypto.createDecipheriv('aes-256-cbc', keyBuffer, iv);
-    let decrypted = decipher.update(encryptedContent);
-    decrypted = Buffer.concat([decrypted, decipher.final()]);
-
-    res.setHeader('Content-Disposition', `attachment; filename="${fileMeta.name}"`);
-    res.setHeader('Content-Type', 'application/octet-stream');
-    res.send(decrypted);
-
-  } catch (err) {
-    console.error('Ошибка при скачивании файла:', err);
-    res.status(500).json({ message: 'Ошибка сервера при скачивании файла' });
-  }
-});
-
-// Получить контейнер по названию
+// ===== Получить контейнер по названию =====
 router.get('/by-name/:name', async (req, res) => {
   const { name } = req.params;
 
   try {
     const result = await pool.query('SELECT * FROM containers WHERE name = $1', [name]);
-
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'Контейнер не найден' });
     }

@@ -42,7 +42,7 @@ export default function Containers() {
 
   const fetchContainers = async (userId: number) => {
     try {
-      const res = await axios.get(`http://localhost:5000/api/containers/${userId}`);
+      const res = await axios.get(`http://localhost:5000/api/containers/user/${userId}`);
       setContainers(res.data);
     } catch (err) {
       console.error('Ошибка загрузки контейнеров:', err);

@@ -4,45 +4,42 @@ const pool = require('../db');
 
 // Создание завещания
 router.post('/', async (req, res) => {
-  const { owner, recipient, dataHash, unlockTime, recipientFullName } = req.body;
-
-  if (!owner || !recipient || !dataHash || !unlockTime) {
-    return res.status(400).json({ message: 'Не все поля заполнены' });
-  }
+  const { owner_id, recipient_email, recipient_full_name, container_name, unlock_date } = req.body;
 
   try {
-    const result = await pool.query(
-      'INSERT INTO wills (owner, recipient, data_hash, unlock_time, recipient_full_name) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [owner, recipient, dataHash, unlockTime, recipientFullName || null]
+    await pool.query(
+      'INSERT INTO wills (owner, recipient, recipient_full_name, container_name, unlock_date) VALUES ($1, $2, $3, $4, $5)',
+      [owner_id, recipient_email, recipient_full_name, container_name, unlock_date]
     );
 
-    res.status(201).json({ message: 'Завещание успешно создано', will: result.rows[0] });
+    res.status(201).json({ message: 'Завещание создано' });
   } catch (err) {
-    console.error('Ошибка создания завещания:', err);
-    res.status(500).json({ message: 'Ошибка сервера' });
+    console.error('Ошибка при создании завещания:', err);
+    res.status(500).json({ message: 'Ошибка сервера при создании завещания' });
   }
 });
 
-// Получить завещания, созданные пользователем
-router.get('/created/:userId', async (req, res) => {
-  const { userId } = req.params;
-  try {
-    const result = await pool.query('SELECT * FROM wills WHERE owner = (SELECT eth_address FROM users WHERE id = $1)', [userId]);
-    res.json(result.rows);
-  } catch (err) {
-    console.error('Ошибка при получении созданных завещаний:', err);
-    res.status(500).json({ message: 'Ошибка сервера' });
-  }
-});
+// Получение всех завещаний для пользователя
+router.get('/:ethAddress', async (req, res) => {
+  const { ethAddress } = req.params;
 
-// Получить завещания, оставленные пользователю
-router.get('/received/:email', async (req, res) => {
-  const { email } = req.params;
   try {
-    const result = await pool.query('SELECT * FROM wills WHERE recipient = $1', [email]);
-    res.json(result.rows);
+    const createdWills = await pool.query(
+      'SELECT * FROM wills WHERE owner = $1',
+      [ethAddress]
+    );
+
+    const receivedWills = await pool.query(
+      'SELECT * FROM wills WHERE recipient = (SELECT email FROM users WHERE eth_address = $1)',
+      [ethAddress]
+    );
+
+    res.json({
+      created: createdWills.rows,
+      received: receivedWills.rows,
+    });
   } catch (err) {
-    console.error('Ошибка при получении завещаний на пользователя:', err);
+    console.error('Ошибка при получении завещаний:', err);
     res.status(500).json({ message: 'Ошибка сервера' });
   }
 });

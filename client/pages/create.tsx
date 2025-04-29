@@ -6,7 +6,7 @@ import Link from 'next/link';
 export default function CreateWill() {
   const [ethAddress, setEthAddress] = useState('');
   const [recipient, setRecipient] = useState('');
-  const [containers, setContainers] = useState<any[]>([]); // 🔥 новое
+  const [containers, setContainers] = useState<any[]>([]);
   const [selectedContainer, setSelectedContainer] = useState('');
   const [unlockDate, setUnlockDate] = useState('');
   const [checkResult, setCheckResult] = useState<string | null>(null);
@@ -25,7 +25,7 @@ export default function CreateWill() {
       const user = JSON.parse(storedUser);
       if (user.ethAddress) {
         setEthAddress(user.ethAddress);
-        fetchContainers(user.id); // 🔥 новое
+        fetchContainers(user.id);
       } else {
         setEthAddress('Адрес не найден');
       }
@@ -33,8 +33,8 @@ export default function CreateWill() {
   }, []);
 
   const fetchContainers = async (userId: number) => {
-    try {
-      const res = await axios.get(`http://localhost:5000/api/containers/${userId}`);
+    try { // ЕСЛИ НЕ БУДЕТ ОТОБРАЖЕНИЯ, ТО ТУТ Я ПОМЕНЯЛ СТРОКУ!!!!!!!!
+      const res = await axios.get(`http://localhost:5000/api/containers/user/${userId}`); 
       setContainers(res.data);
     } catch (err) {
       console.error('Ошибка загрузки контейнеров:', err);
@@ -65,26 +65,42 @@ export default function CreateWill() {
     }
   };
 
-  const handleContinue = (e: React.FormEvent) => {
+  const handleContinue = async (e: React.FormEvent) => {
     e.preventDefault();
-
+  
     if (!recipient || !selectedContainer || !unlockDate) {
       setError('Пожалуйста, заполните все поля');
       return;
     }
-
+  
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
     const selected = new Date(unlockDate);
-
-    if (selected < today) {
+  
+    if (selected.setHours(0,0,0,0) < today.setHours(0,0,0,0)) {
       setError('Дата разблокировки должна быть сегодняшней или будущей');
       return;
     }
-
-    setError('');
-    setShowModal(true);
+  
+    try {
+      const response = await axios.post('http://localhost:5000/api/auth/check-email', { email: recipient });
+  
+      if (response.data.exists) {
+        setIsRecipientRegistered(true);
+        setRecipientFullName(response.data.fullName);
+      } else {
+        setIsRecipientRegistered(false);
+        setRecipientFullName(''); // Очистим на всякий случай
+      }
+  
+      setError('');
+      setShowModal(true);
+    } 
+    catch (error) {
+      console.error('Ошибка при проверке почты получателя:', error);
+      setError('Ошибка при проверке получателя');
+    }
   };
+  
 
   const handleConfirmWill = async () => {
     try {
