@@ -3,19 +3,57 @@ const router = express.Router();
 const pool = require('../db');
 
 // Создание завещания
+// router.post('/', async (req, res) => {
+//   const { owner, recipient, recipient_full_name, data_hash, unlockTime } = req.body;
+//   // Найти id контейнера по имени и владельцу
+//   const containerRes = await pool.query(
+//     'SELECT id FROM containers WHERE name = $1 AND user_id = $2',
+//     [data_hash, owner]
+//   );
+
+//   if (containerRes.rows.length === 0) {
+//     return res.status(400).json({ message: 'Контейнер не найден' });
+//   }
+
+//   const containerId = containerRes.rows[0].id;
+//   try {
+//     await pool.query(
+//       `INSERT INTO wills (owner, recipient, unlock_time, data_hash, container_id, recipient_full_name)
+//        VALUES ($1, $2, $3, $4, $5, $6)`,
+//       [owner, recipient, unlockTime, data_hash, containerId, recipient_full_name]
+//     );
+    
+//     res.status(201).json({ message: 'Завещание успешно создано' });
+//   } catch (err) {
+//     console.error('Ошибка при создании завещания:', err);
+//     res.status(500).json({ message: 'Ошибка сервера при создании завещания' });
+//   }
+// });
 router.post('/', async (req, res) => {
-  const { owner_id, recipient_email, recipient_full_name, container_name, unlock_date } = req.body;
+  const { owner, recipient, containerId, unlockTime, recipientFullName } = req.body;
+
+  if (!owner || !recipient || !containerId || !unlockTime) {
+    return res.status(400).json({ message: 'Не все поля заполнены' });
+  }
 
   try {
-    await pool.query(
-      'INSERT INTO wills (owner, recipient, recipient_full_name, container_name, unlock_date) VALUES ($1, $2, $3, $4, $5)',
-      [owner_id, recipient_email, recipient_full_name, container_name, unlock_date]
+    // Получаем data_hash из containers
+    const containerRes = await pool.query('SELECT name FROM containers WHERE id = $1', [containerId]);
+    if (containerRes.rows.length === 0) {
+      return res.status(404).json({ message: 'Контейнер не найден' });
+    }
+
+    const dataHash = containerRes.rows[0].name;
+
+    const result = await pool.query(
+      'INSERT INTO wills (owner, recipient, data_hash, unlock_time, recipient_full_name, container_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [owner, recipient, dataHash, unlockTime, recipientFullName || null, containerId]
     );
 
-    res.status(201).json({ message: 'Завещание создано' });
+    res.status(201).json({ message: 'Завещание успешно создано', will: result.rows[0] });
   } catch (err) {
-    console.error('Ошибка при создании завещания:', err);
-    res.status(500).json({ message: 'Ошибка сервера при создании завещания' });
+    console.error('Ошибка создания завещания:', err);
+    res.status(500).json({ message: 'Ошибка сервера' });
   }
 });
 

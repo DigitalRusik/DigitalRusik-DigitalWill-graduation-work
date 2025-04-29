@@ -19,6 +19,8 @@ export default function Containers() {
   const [targetContainerId, setTargetContainerId] = useState<number | null>(null);
   const [targetFileName, setTargetFileName] = useState('');
   const [unlockedContainers, setUnlockedContainers] = useState<number[]>([]);
+  const [modalError, setModalError] = useState("");
+
 
   const router = useRouter();
 
@@ -118,6 +120,7 @@ export default function Containers() {
     if (fileName) setTargetFileName(fileName);
     setPassword('');
     setError('');
+    setModalError("");
     setShowModal(true);
   };
 
@@ -131,7 +134,7 @@ export default function Containers() {
       });
 
       if (!verify.data.success) {
-        setError('Ошибка: неверный пароль');
+        setModalError('Ошибка: неверный пароль');
         return;
       }
 
@@ -151,10 +154,10 @@ export default function Containers() {
       setTargetFileName('');
     } catch (err: any) {
       if (err.response?.status === 401) {
-        setError('Ошибка: неверный пароль');
+        setModalError('Ошибка: неверный пароль');
       } else {
         console.error(err);
-        setError('Ошибка при выполнении действия');
+        setModalError('Ошибка при выполнении действия');
       }
     }
   };
@@ -240,16 +243,19 @@ export default function Containers() {
             Создать контейнер
           </button>
         </div>
-        </form>
         <div className={`error ${showModal ? 'hidden' : ''}`}>
           {error && <div className="error-text">{error}</div>}
         </div>
+        </form>
+        
         <div className="hr-padding">
           <hr></hr>
           <hr></hr>
           <hr></hr>
         </div>
         <div>
+          <div><strong>Внимание! </strong>Удаление контейнера приведёт к удалению всех завещаний,
+          в которых он имеется</div>
           <h2 className="text-xl font-semibold mb-2">Ваши контейнеры:</h2>
           {containers.map(container => (
           <div key={container.id} className="border p-4 rounded mb-3">
@@ -308,7 +314,7 @@ export default function Containers() {
                 onChange={(e) => setPassword(e.target.value)}
               />
 
-              {error && <div className="error-text">{error}</div>}
+              {modalError && <div className="error-text">{modalError}</div>}
 
               <div className="modal-buttons">
                 <button

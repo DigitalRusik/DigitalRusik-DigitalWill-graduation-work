@@ -17,6 +17,13 @@ body,
   gap: 10px;
 }
 
+.ul {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+}
+
 .center-will {
   display: flex;
   align-items: center;
@@ -103,7 +110,7 @@ body,
 }
 
 .exit-button {
-  margin-left: 10%;
+  margin: 2%;
 }
 
 .check-button {
@@ -166,4 +173,37 @@ body,
 .hr-padding {
   padding-top: 3%;
   padding-bottom: 3%;
+}
+
+.will-card {
+  background-color: #ffffff;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.2s ease;
+}
+
+.will-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.download-button {
+  padding: 8px 12px;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.download-button:hover {
+  background-color: #45a049;
+}
+
+.locked-text {
+  color: #888;
+  margin-top: 10px;
 }

@@ -33,7 +33,7 @@ export default function CreateWill() {
   }, []);
 
   const fetchContainers = async (userId: number) => {
-    try { // ЕСЛИ НЕ БУДЕТ ОТОБРАЖЕНИЯ, ТО ТУТ Я ПОМЕНЯЛ СТРОКУ!!!!!!!!
+    try {
       const res = await axios.get(`http://localhost:5000/api/containers/user/${userId}`); 
       setContainers(res.data);
     } catch (err) {
@@ -82,14 +82,14 @@ export default function CreateWill() {
     }
   
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/check-email', { email: recipient });
+      const response = await axios.post('http://localhost:5000/api/users/check-email', { email: recipient });
   
       if (response.data.exists) {
         setIsRecipientRegistered(true);
         setRecipientFullName(response.data.fullName);
       } else {
         setIsRecipientRegistered(false);
-        setRecipientFullName(''); // Очистим на всякий случай
+        setRecipientFullName('');
       }
   
       setError('');
@@ -108,7 +108,7 @@ export default function CreateWill() {
       await axios.post('http://localhost:5000/api/wills', {
         owner: ethAddress,
         recipient,
-        dataHash: selectedContainer,
+        containerId: selectedContainer,
         unlockTime,
       });
 
@@ -138,7 +138,6 @@ export default function CreateWill() {
               Обратно на главную страницу
             </button>
           </Link>
-          <p className="mb-4">Ваш адрес: {ethAddress}</p>
         </div>
 
         <div className="center-will">
@@ -174,7 +173,7 @@ export default function CreateWill() {
               >
                 <option value="">-- Выберите контейнер --</option>
                 {containers.map((container) => (
-                  <option key={container.id} value={container.name}>
+                  <option key={container.id} value={container.id}>
                     {container.name}
                   </option>
                 ))}

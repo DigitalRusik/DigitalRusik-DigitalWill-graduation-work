@@ -80,11 +80,15 @@ router.post('/login', async (req, res) => {
 // Получение всех пользователей (для wills)
 router.get('/users', async (req, res) => {
   try {
-    const result = await pool.query('SELECT id, first_name, last_name, patronymic FROM users');
+    const result = await pool.query(
+      'SELECT id, first_name, last_name, patronymic, email, eth_address FROM users'
+    );
 
     const users = result.rows.map(user => ({
       id: user.id,
       fullName: `${user.last_name} ${user.first_name} ${user.patronymic || ''}`.trim(),
+      email: user.email,
+      eth_address: user.eth_address
     }));
 
     res.json(users);
