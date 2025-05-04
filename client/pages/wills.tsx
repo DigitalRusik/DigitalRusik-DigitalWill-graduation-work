@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { useRouter } from 'next/router';
 import Link from 'next/link';
 
 export default function Wills() {
@@ -16,7 +15,7 @@ export default function Wills() {
 
       const user = JSON.parse(storedUser);
       setUserEthAddress(user.ethAddress);
-
+      // Получение списков завещаний
       try {
         const willsRes = await axios.get(`http://localhost:5000/api/wills/${user.ethAddress}`);
         const usersRes = await axios.get('http://localhost:5000/api/auth/users');
@@ -54,7 +53,7 @@ export default function Wills() {
     return unlockDate <= today;
   };
   
-
+  //Скачивание завещания
   const handleDownload = async (willId: string) => {
     try {
       const response = await axios.get(`http://localhost:5000/api/containers/download-will/${willId}`, {
@@ -77,7 +76,7 @@ export default function Wills() {
   return (
     <main className="main-container">
       <div className="head-page">
-        <h1 className="text-2xl font-bold mb-6">Мои завещания</h1>
+        <h1>Мои завещания</h1>
       </div>
       <div>
       <hr></hr>
@@ -85,7 +84,7 @@ export default function Wills() {
       <div className="div-body">
         <div className="exit-button">
           <Link href="/dashboard">
-            <button className="bg-blue-600 text-white px-4 py-2 rounded-xl">
+            <button>
               Назад на главную
             </button>
           </Link>
@@ -94,15 +93,15 @@ export default function Wills() {
         {error && <div className="error-text">{error}</div>}
 
         {/* Созданные завещания */}
-        <section className="w-full max-w-2xl mt-6">
-          <h2 className="text-xl font-semibold mb-2">Созданные завещания</h2>
+        <section>
+          <h2>Созданные завещания</h2>
           {createdWills.length === 0 ? (
             <p>Нет созданных завещаний</p>
           ) : (
             <ul>
               {createdWills.map((will: any) => (
-                <li key={will.id} className="mb-2 border p-2 rounded">
-                  <p><strong>Получатель: </strong>{will.recipientFullName}</p>
+                <li key={will.id}>
+                  <p><strong>Наследник: </strong>{will.recipientFullName}</p>
                   <p><strong>Контейнер: </strong>{will.data_hash}</p>
                   <p><strong>Дата разблокировки: </strong> {new Date(will.unlock_time * 1000).toLocaleDateString('ru-RU')}</p>
                 </li>
@@ -115,16 +114,16 @@ export default function Wills() {
         <hr></hr>
         <hr></hr>
 
-        {/* Завещания, оставленные вам */}
-        <section className="w-full max-w-2xl">
-          <h2 className="text-xl font-semibold mb-2">Завещания, оставленные вам</h2>
+        {/* Завещания, оставленные пользователю */}
+        <section>
+          <h2>Завещания, оставленные вам</h2>
           {receivedWills.length === 0 ? (
             <p>Нет завещаний</p>
           ) : (
             <ul className="ul">
               {receivedWills.map((will: any) => (
                 <div key={will.id} className="will-card">
-                  <p><strong>Отправитель: </strong>{will.ownerFullName}</p>
+                  <p><strong>Завещатель: </strong>{will.ownerFullName}</p>
                   <p><strong>Контейнер: </strong>{will.data_hash}</p>
                   <p><strong>Дата разблокировки: </strong> {new Date(will.unlock_time * 1000).toLocaleDateString('ru-RU')}</p>
                   {isUnlocked(will.unlock_time) ? (

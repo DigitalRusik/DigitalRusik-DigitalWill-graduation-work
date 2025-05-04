@@ -13,7 +13,7 @@ function generateEthAddress() {
   return address;
 }
 
-// Регистрация
+// =====Регистрация=====
 router.post('/register', async (req, res) => {
   const { firstName, lastName, patronymic, email, password } = req.body;
 
@@ -46,7 +46,7 @@ router.post('/register', async (req, res) => {
 
 module.exports = router;
 
-// Авторизация
+// =====Авторизация=====
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
@@ -77,7 +77,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Получение всех пользователей (для wills)
+// =====Получение всех пользователей=====
 router.get('/users', async (req, res) => {
   try {
     const result = await pool.query(

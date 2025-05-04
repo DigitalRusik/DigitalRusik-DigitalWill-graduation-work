@@ -32,6 +32,7 @@ export default function CreateWill() {
     }
   }, []);
 
+  //Загрузка контейнеров для выпадающего списка
   const fetchContainers = async (userId: number) => {
     try {
       const res = await axios.get(`http://localhost:5000/api/containers/user/${userId}`); 
@@ -40,13 +41,13 @@ export default function CreateWill() {
       console.error('Ошибка загрузки контейнеров:', err);
     }
   };
-
+  // Ошибка, если поле email пустое
   const handleCheckRecipient = async () => {
     if (!recipient.trim()) {
       setCheckResult('Пожалуйста, введите email для проверки');
       return;
     }
-
+    // Релизация кнопки "Проверить"
     try {
       const response = await axios.post('http://localhost:5000/api/users/check-email', {
         email: recipient,
@@ -64,7 +65,7 @@ export default function CreateWill() {
       setCheckResult('Ошибка при проверке');
     }
   };
-
+  // Проверка заполненности при нажатии "Продолжить"
   const handleContinue = async (e: React.FormEvent) => {
     e.preventDefault();
   
@@ -75,8 +76,9 @@ export default function CreateWill() {
   
     const today = new Date();
     const selected = new Date(unlockDate);
-  
-    if (selected.setHours(0,0,0,0) < today.setHours(0,0,0,0)) {
+
+    // Проверка выбранной даты разблокировки на корректность
+    if (selected.setHours(0,0,0,0) < today.setHours(0,0,0,0)) { 
       setError('Дата разблокировки должна быть сегодняшней или будущей');
       return;
     }
@@ -101,7 +103,7 @@ export default function CreateWill() {
     }
   };
   
-
+  // Подтверждение данных в модальном окне и отправка на backend
   const handleConfirmWill = async () => {
     try {
       const unlockTime = Math.floor(new Date(unlockDate).getTime() / 1000);
@@ -134,7 +136,7 @@ export default function CreateWill() {
       <div className="div-body">
         <div className="exit-button">
           <Link href="/dashboard">
-            <button className="bg-blue-600 text-white px-4 py-2 rounded-xl">
+            <button>
               Обратно на главную страницу
             </button>
           </Link>
@@ -143,9 +145,8 @@ export default function CreateWill() {
         <div className="center-will">
           <form onSubmit={handleContinue} className="space-y-4">
             <div>
-              <label className="block mb-1">Адрес электронной почты получателя:</label>
+              <label>Адрес электронной почты получателя:</label>
               <input
-                className="flex-1 border rounded p-2"
                 type="email"
                 placeholder="Email получателя"
                 value={recipient}
@@ -157,17 +158,15 @@ export default function CreateWill() {
               <button
                 type="button"
                 onClick={handleCheckRecipient}
-                className="ml-2 bg-gray-300 px-4 py-2 rounded"
               >
                 Проверить
               </button>
-              {checkResult && <p className="text-sm mt-1">{checkResult}</p>}
+              {checkResult && <p>{checkResult}</p>}
             </div>
 
             <div>
               <label>Выберите контейнер: </label>
               <select
-                className="w-full border rounded p-2"
                 value={selectedContainer}
                 onChange={(e) => setSelectedContainer(e.target.value)}
               >
@@ -183,35 +182,33 @@ export default function CreateWill() {
             <div>
               <label>Дата разблокировки: </label>
               <input
-                className="w-full border rounded p-2"
                 type="date"
                 placeholder="Дата разблокировки"
                 value={unlockDate}
                 onChange={(e) => setUnlockDate(e.target.value)}
               />
             </div> 
-            <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded-xl">
+            <button type="submit">
               Продолжить
             </button>
           </form>
           <div className="error-text">    
-              {error && <div className="text-red-600 font-medium">{error}</div>}
+              {error && <div>{error}</div>}
           </div>
         </div>
       </div>
 
-      {/*Модалка подтверждения завещания */}
+      {/*Модальное окно подтверждения завещания */}
       <div className={`modal ${!showModal ? 'hidden' : ''}`}>
       {showModal && (
         <div className="modal-box">
           <h3 className="">Подтверждение данных завещания</h3>
-          <div className="space-y-2">
+          <div>
           <p><strong>ФИО получателя:</strong> 
             {isRecipientRegistered ? (
-              <span className="block mt-1">{recipientFullName}</span>
+              <span>{recipientFullName}</span>
             ) : (
               <input
-                className="w-full border rounded p-2 mt-1"
                 placeholder="Введите ФИО получателя"
                 value={recipientFullName}
                 onChange={(e) => setRecipientFullName(e.target.value)}
@@ -222,16 +219,14 @@ export default function CreateWill() {
             <p><strong>Контейнер: </strong> {selectedContainer}</p>
             <p><strong>Дата разблокировки(год, месяц, день): </strong> {unlockDate}</p>
           </div>
-          <div className="flex justify-end gap-2 mt-6">
+          <div>
             <button
               onClick={handleConfirmWill}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
             >
               Подтвердить
             </button>
             <button
               onClick={() => setShowModal(false)}
-              className="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded"
             >
               Отмена
             </button>

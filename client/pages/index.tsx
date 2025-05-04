@@ -37,7 +37,6 @@ export default function Register() {
         },
         body: JSON.stringify(formData),
       });
-      //console.log('Отправляемые данные:', formData);
       const data = await response.json();
       if (!response.ok) {
         setError(data.message || 'Ошибка регистрации');
@@ -54,7 +53,6 @@ export default function Register() {
     }
   };
   
-
   return (
     <main className="main-container">
       <div className="head-page">
@@ -68,7 +66,6 @@ export default function Register() {
             name="lastName"
             type="text"
             placeholder="Фамилия"
-            className="w-full-border-rounded-p-2"
             value={formData.lastName}
             onChange={handleChange}
             required
@@ -77,7 +74,6 @@ export default function Register() {
             name="firstName"
             type="text"
             placeholder="Имя"
-            className="w-full-border-rounded-p-2"
             value={formData.firstName}
             onChange={handleChange}
             required
@@ -86,7 +82,6 @@ export default function Register() {
             name="patronymic"
             type="text"
             placeholder="Отчество"
-            className="w-full-border-rounded-p-2"
             value={formData.patronymic}
             onChange={handleChange}
           />
@@ -94,7 +89,6 @@ export default function Register() {
             name="email"
             type="email"
             placeholder="Эл. почта"
-            className="w-full-border-rounded-p-2"
             value={formData.email}
             onChange={handleChange}
             required
@@ -103,7 +97,6 @@ export default function Register() {
             name="password"
             type="password"
             placeholder="Пароль"
-            className="w-full-border-rounded-p-2"
             value={formData.password}
             onChange={handleChange}
             required
@@ -111,15 +104,13 @@ export default function Register() {
           <button
             type="submit"
             disabled={isLoading}
-            className="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 disabled:opacity-50"
           >
             {isLoading ? 'Регистрация...' : 'Зарегистрироваться'}
           </button>
         </form>
         <div className="exist-acc">
           <button
-          onClick={() => router.push('/login')}
-          className="mt-6 text-blue-600 underline w-full text-center">
+          onClick={() => router.push('/login')}>
           Войти в существующий аккаунт
         </button>
         </div>

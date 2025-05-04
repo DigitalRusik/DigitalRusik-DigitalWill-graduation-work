@@ -2,33 +2,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 
-// Создание завещания
-// router.post('/', async (req, res) => {
-//   const { owner, recipient, recipient_full_name, data_hash, unlockTime } = req.body;
-//   // Найти id контейнера по имени и владельцу
-//   const containerRes = await pool.query(
-//     'SELECT id FROM containers WHERE name = $1 AND user_id = $2',
-//     [data_hash, owner]
-//   );
-
-//   if (containerRes.rows.length === 0) {
-//     return res.status(400).json({ message: 'Контейнер не найден' });
-//   }
-
-//   const containerId = containerRes.rows[0].id;
-//   try {
-//     await pool.query(
-//       `INSERT INTO wills (owner, recipient, unlock_time, data_hash, container_id, recipient_full_name)
-//        VALUES ($1, $2, $3, $4, $5, $6)`,
-//       [owner, recipient, unlockTime, data_hash, containerId, recipient_full_name]
-//     );
-    
-//     res.status(201).json({ message: 'Завещание успешно создано' });
-//   } catch (err) {
-//     console.error('Ошибка при создании завещания:', err);
-//     res.status(500).json({ message: 'Ошибка сервера при создании завещания' });
-//   }
-// });
+// =====Создание завещания=====
 router.post('/', async (req, res) => {
   const { owner, recipient, containerId, unlockTime, recipientFullName } = req.body;
 
@@ -57,7 +31,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Получение всех завещаний для пользователя
+// =====Получение всех завещаний для пользователя=====
 router.get('/:ethAddress', async (req, res) => {
   const { ethAddress } = req.params;
 
@@ -82,7 +56,7 @@ router.get('/:ethAddress', async (req, res) => {
   }
 });
 
-// Получение файлов контейнера
+// =====Получение файлов контейнера=====
 router.get('/by-name/:name', async (req, res) => {
   const { name } = req.params;
 
