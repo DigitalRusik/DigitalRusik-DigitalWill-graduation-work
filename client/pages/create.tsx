@@ -113,6 +113,25 @@ export default function CreateWill() {
         containerId: selectedContainer,
         unlockTime,
       });
+      // После успешного создания завещания в БД
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+
+      const usersRes = await axios.get('http://localhost:5000/api/auth/users');
+      const allUsers = usersRes.data;
+      const recipient_email = allUsers.find((u: any) => u.email === recipient);
+      const selectedRecipientEth = recipient_email?.eth_address;
+      if (!recipient_email) {
+        console.error('Адрес получателя не найден!');
+        return;
+      }
+      
+
+      await axios.post('http://localhost:5000/api/contract/create-will', {
+        ethAddress: currentUser.ethAddress,
+        recipientEth: selectedRecipientEth, // нужно будет найти по почте
+        containerName: selectedContainer,
+        unlockTime: Math.floor(new Date(unlockDate).getTime() / 1000),
+      });
 
       alert('Завещание создано');
       router.push('/dashboard');

@@ -1,17 +1,12 @@
-
 require("@nomicfoundation/hardhat-toolbox");
+require("dotenv").config();
 
 module.exports = {
-  solidity: "0.8.20",
-  paths: {
-    sources: "./contracts",
-    artifacts: "./artifacts"
-  },
+  solidity: "0.8.28",
   networks: {
-    hardhat: {},
-    goerli: {
-      url: "https://eth-goerli.g.alchemy.com/v2/YOUR_API_KEY",
-      accounts: ["0xYOUR_PRIVATE_KEY"]
-    }
-  }
+    localhost: {
+      url: "http://127.0.0.1:8545",
+    },
+  },
 };
+

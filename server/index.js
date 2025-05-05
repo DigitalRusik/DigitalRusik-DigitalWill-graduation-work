@@ -15,6 +15,9 @@ const containersRouter = require('./routes/containers');
 app.use('/api/containers', containersRouter);
 const willsRoutes = require('./routes/wills');
 app.use('/api/wills', willsRoutes);
+const contractRoutes = require('./routes/contract');
+app.use('/api/contract', contractRoutes);
+
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
