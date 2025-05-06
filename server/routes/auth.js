@@ -97,3 +97,25 @@ router.get('/users', async (req, res) => {
     res.status(500).json({ message: 'Ошибка сервера' });
   }
 });
+
+// =====Проверка статуса подтверждения пользователя=====
+router.get('/status/:email', async (req, res) => {
+  const { email } = req.params;
+
+  try {
+    const result = await pool.query(
+      'SELECT is_verified FROM users WHERE email = $1',
+      [email]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Пользователь не найден' });
+    }
+
+    res.json({ isVerified: result.rows[0].is_verified });
+  } catch (err) {
+    console.error('Ошибка получения статуса подтверждения:', err);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+

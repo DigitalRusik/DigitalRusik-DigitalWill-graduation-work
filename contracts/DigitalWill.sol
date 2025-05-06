@@ -23,8 +23,8 @@ contract DigitalWill {
         uint256 _unlockTime,
         bool _isVerified
     ) public {
-        require(_recipient != address(0), "Некорректный адрес получателя");
-        require(_unlockTime >= block.timestamp, "Дата разблокировки должна быть назначена на сегодня или в будущую дату");
+        require(_recipient != address(0), "Incorrect repicient address!");
+        require(_unlockTime >= block.timestamp, "Unlock date must be today or later");
 
         wills.push(Will({
             owner: msg.sender,
@@ -61,11 +61,11 @@ contract DigitalWill {
 
     // Исполнение завещания получателем
     function executeWill(uint willId) public {
-        require(willId < wills.length, "Неверный ID завещания");
+        require(willId < wills.length, "Incorrect will ID");
         Will storage will = wills[willId];
-        require(msg.sender == will.recipient, "Вы не получатель этого завещания");
-        require(!will.isExecuted, "Завещание уже исполнено");
-        require(block.timestamp > will.unlockTime, "Завещание пока заблокировано");
+        require(msg.sender == will.recipient, "You are not the recipient of this will");
+        require(!will.isExecuted, "Will is executed");
+        require(block.timestamp > will.unlockTime, "The will is still locked");
 
         will.isExecuted = true;
 

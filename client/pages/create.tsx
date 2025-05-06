@@ -15,6 +15,9 @@ export default function CreateWill() {
   const [error, setError] = useState('');
   const router = useRouter();
   const [isRecipientRegistered, setIsRecipientRegistered] = useState(false);
+  const [userVerified, setUserVerified] = useState(true);
+  const [isCreating, setIsCreating] = useState(false);
+
 
 
   useEffect(() => {
@@ -26,6 +29,12 @@ export default function CreateWill() {
       if (user.ethAddress) {
         setEthAddress(user.ethAddress);
         fetchContainers(user.id);
+        axios.get(`http://localhost:5000/api/auth/status/${user.email}`)
+        .then(res => setUserVerified(res.data.isVerified))
+        .catch(err => {
+          console.error('Ошибка получения статуса подтверждения:', err);
+          setUserVerified(false); // по умолчанию блокируем
+        });
       } else {
         setEthAddress('Адрес не найден');
       }
@@ -105,6 +114,7 @@ export default function CreateWill() {
   
   // Подтверждение данных в модальном окне и отправка на backend
   const handleConfirmWill = async () => {
+    setIsCreating(true);
     try {
       const unlockTime = Math.floor(new Date(unlockDate).getTime() / 1000);
       await axios.post('http://localhost:5000/api/wills', {
@@ -128,15 +138,16 @@ export default function CreateWill() {
 
       await axios.post('http://localhost:5000/api/contract/create-will', {
         ethAddress: currentUser.ethAddress,
-        recipientEth: selectedRecipientEth, // нужно будет найти по почте
+        recipientEth: selectedRecipientEth,
         containerName: selectedContainer,
         unlockTime: Math.floor(new Date(unlockDate).getTime() / 1000),
       });
-
+      setIsCreating(false);
       alert('Завещание создано');
       router.push('/dashboard');
     } catch (err) {
       console.error('Ошибка при создании завещания:', err);
+      setIsCreating(false);
     }
   };
 
@@ -160,41 +171,47 @@ export default function CreateWill() {
             </button>
           </Link>
         </div>
+        {!userVerified ? (
+          <p>Ваш профиль не подтверждён. Вы не можете создавать завещания.</p>
+        ) : (
+          <p>Ваш аккаунт подтверждён! Вы можете создавать завещание.</p>
+        )}
 
         <div className="center-will">
-          <form onSubmit={handleContinue} className="space-y-4">
-            <div>
-              <label>Адрес электронной почты получателя:</label>
-              <input
-                type="email"
-                placeholder="Email получателя"
-                value={recipient}
-                onChange={(e) => {
-                  setRecipient(e.target.value);
-                  setCheckResult(null);
-                }}
-              />
-              <button
-                type="button"
-                onClick={handleCheckRecipient}
-              >
-                Проверить
-              </button>
-              {checkResult && <p>{checkResult}</p>}
-            </div>
+          {userVerified && (
+            <form onSubmit={handleContinue} className="space-y-4">
+              <div>
+                <label>Адрес электронной почты получателя:</label>
+                <input
+                  type="email"
+                  placeholder="Email получателя"
+                  value={recipient}
+                  onChange={(e) => {
+                    setRecipient(e.target.value);
+                    setCheckResult(null);
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={handleCheckRecipient}
+                >
+                  Проверить
+                </button>
+                {checkResult && <p>{checkResult}</p>}
+              </div>
 
-            <div>
-              <label>Выберите контейнер: </label>
-              <select
-                value={selectedContainer}
-                onChange={(e) => setSelectedContainer(e.target.value)}
-              >
-                <option value="">-- Выберите контейнер --</option>
-                {containers.map((container) => (
-                  <option key={container.id} value={container.id}>
-                    {container.name}
-                  </option>
-                ))}
+              <div>
+                <label>Выберите контейнер: </label>
+                <select
+                  value={selectedContainer}
+                  onChange={(e) => setSelectedContainer(e.target.value)}
+                >
+                  <option value="">-- Выберите контейнер --</option>
+                  {containers.map((container) => (
+                    <option key={container.id} value={container.id}>
+                      {container.name}
+                    </option>
+                  ))}
               </select>
             </div>
 
@@ -211,6 +228,7 @@ export default function CreateWill() {
               Продолжить
             </button>
           </form>
+          )}
           <div className="error-text">    
               {error && <div>{error}</div>}
           </div>
@@ -238,6 +256,7 @@ export default function CreateWill() {
             <p><strong>Контейнер: </strong> {selectedContainer}</p>
             <p><strong>Дата разблокировки(год, месяц, день): </strong> {unlockDate}</p>
           </div>
+          {!isCreating ? (
           <div>
             <button
               onClick={handleConfirmWill}
@@ -250,6 +269,10 @@ export default function CreateWill() {
               Отмена
             </button>
           </div>
+          ) : (
+            <p>⏳ Идёт процесс создания завещания...</p>
+          )
+          }
         </div>
       )}
       </div>
