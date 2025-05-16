@@ -2,38 +2,38 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import Link from 'next/link';
 
+interface Will {
+  id: number;
+  owner: string;
+  recipient: string;
+  data_hash: string;
+  unlock_time: number;
+  created_at: string;
+  recipient_full_name?: string;
+  container_id: number;
+}
+
 export default function Wills() {
-  const [createdWills, setCreatedWills] = useState([]);
-  const [receivedWills, setReceivedWills] = useState([]);
+  const [createdWills, setCreatedWills] = useState<Will[]>([]);
+  const [receivedWills, setReceivedWills] = useState<Will[]>([]);
   const [error, setError] = useState('');
-  const [userEthAddress, setUserEthAddress] = useState('');
 
   useEffect(() => {
     const fetchWills = async () => {
       const storedUser = localStorage.getItem('user');
-      if (!storedUser) return;
+      const token = localStorage.getItem('token');
+      if (!storedUser || !token) return;
 
-      const user = JSON.parse(storedUser);
-      setUserEthAddress(user.ethAddress);
       // Получение списков завещаний
       try {
-        const willsRes = await axios.get(`http://localhost:5000/api/wills/${user.ethAddress}`);
-        const usersRes = await axios.get('http://localhost:5000/api/auth/users');
-
-        const users = usersRes.data;
-
-        const created = willsRes.data.created.map((will: any) => ({
-          ...will,
-          recipientFullName: users.find((u: any) => u.email === will.recipient)?.fullName || 'Неизвестно',
-        }));
-
-        const received = willsRes.data.received.map((will: any) => ({
-          ...will,
-          ownerFullName: users.find((u: any) => u.eth_address === will.owner)?.fullName || 'Неизвестно',
-        }));
-
-        setCreatedWills(created);
-        setReceivedWills(received);
+        const res = await axios.get('http://localhost:5000/api/wills/myWills', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      setCreatedWills(res.data.sent);
+      setReceivedWills(res.data.received);
+      console.log(res.data)
       } catch (err) {
         console.error('Ошибка при получении завещаний:', err);
         setError('Не удалось загрузить данные завещаний');
@@ -95,13 +95,13 @@ export default function Wills() {
         {/* Созданные завещания */}
         <section>
           <h2>Созданные завещания</h2>
-          {createdWills.length === 0 ? (
+          {Array.isArray(createdWills) && createdWills.length === 0 ? (
             <p>Нет созданных завещаний</p>
           ) : (
             <ul>
-              {createdWills.map((will: any) => (
+              {Array.isArray(createdWills) && createdWills.map((will: any) => (
                 <li key={will.id}>
-                  <p><strong>Наследник: </strong>{will.recipientFullName}</p>
+                  <p><strong>Наследник: </strong>{will.recipient_name}</p>
                   <p><strong>Контейнер: </strong>{will.data_hash}</p>
                   <p><strong>Дата разблокировки: </strong> {new Date(will.unlock_time * 1000).toLocaleDateString('ru-RU')}</p>
                 </li>
@@ -117,13 +117,13 @@ export default function Wills() {
         {/* Завещания, оставленные пользователю */}
         <section>
           <h2>Завещания, оставленные вам</h2>
-          {receivedWills.length === 0 ? (
+          {Array.isArray(receivedWills) && receivedWills.length === 0 ? (
             <p>Нет завещаний</p>
           ) : (
             <ul className="ul">
-              {receivedWills.map((will: any) => (
+              {Array.isArray(receivedWills) && receivedWills.map((will: any) => (
                 <div key={will.id} className="will-card">
-                  <p><strong>Завещатель: </strong>{will.ownerFullName}</p>
+                  <p><strong>Завещатель: </strong>{will.owner_name}</p>
                   <p><strong>Контейнер: </strong>{will.data_hash}</p>
                   <p><strong>Дата разблокировки: </strong> {new Date(will.unlock_time * 1000).toLocaleDateString('ru-RU')}</p>
                   {isUnlocked(will.unlock_time) ? (

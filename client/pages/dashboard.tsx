@@ -34,6 +34,7 @@ export default function Dashboard() {
         <button
           onClick={() => {
             localStorage.removeItem('user');
+            localStorage.removeItem("token");
             router.push('/login');
           }}
           className="exit-button"

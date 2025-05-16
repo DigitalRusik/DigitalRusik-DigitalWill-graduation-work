@@ -169,7 +169,8 @@ router.get('/download-will/:willId', async (req, res) => {
     }
 
     // 4. Готовим архив
-    res.setHeader('Content-Disposition', `attachment; filename=${containerName}.zip`);
+    const safeName = containerName.replace(/[^\w\d_-]/g, "_"); // "Безопасное" имя (замена кириллицы и др. символов)
+    res.setHeader('Content-Disposition', `attachment; filename=${safeName}.zip`);
     res.setHeader('Content-Type', 'application/zip');
 
     const archive = archiver('zip', { zlib: { level: 9 } });

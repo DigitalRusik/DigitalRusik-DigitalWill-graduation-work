@@ -26,6 +26,12 @@ export default function CreateWill() {
       router.push('/login');
     } else {
       const user = JSON.parse(storedUser);
+      const userId = user.id;
+        if (userId) {
+          fetchContainers(userId);
+        } else {
+          console.warn("Не удалось получить userId");
+        }
       if (user.ethAddress) {
         setEthAddress(user.ethAddress);
         fetchContainers(user.id);
@@ -33,7 +39,7 @@ export default function CreateWill() {
         .then(res => setUserVerified(res.data.isVerified))
         .catch(err => {
           console.error('Ошибка получения статуса подтверждения:', err);
-          setUserVerified(false); // по умолчанию блокируем
+          setUserVerified(false);
         });
       } else {
         setEthAddress('Адрес не найден');
@@ -118,11 +124,15 @@ export default function CreateWill() {
     try {
       const unlockTime = Math.floor(new Date(unlockDate).getTime() / 1000);
       await axios.post('http://localhost:5000/api/wills', {
-        owner: ethAddress,
         recipient,
         containerId: selectedContainer,
         unlockTime,
-      });
+      },
+    {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
+      }
+    });
       // После успешного создания завещания в БД
       const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
 
@@ -135,12 +145,15 @@ export default function CreateWill() {
         return;
       }
       
-
       await axios.post('http://localhost:5000/api/contract/create-will', {
-        ethAddress: currentUser.ethAddress,
-        recipientEth: selectedRecipientEth,
-        containerName: selectedContainer,
+        recipientEthAddress: selectedRecipientEth,
+        dataHash: selectedContainer,
         unlockTime: Math.floor(new Date(unlockDate).getTime() / 1000),
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        }
       });
       setIsCreating(false);
       alert('Завещание создано');
@@ -191,7 +204,7 @@ export default function CreateWill() {
                     setCheckResult(null);
                   }}
                 />
-                <button
+                <button 
                   type="button"
                   onClick={handleCheckRecipient}
                 >

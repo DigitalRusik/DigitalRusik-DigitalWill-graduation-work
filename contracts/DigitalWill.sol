@@ -13,6 +13,8 @@ contract DigitalWill {
 
     Will[] public wills;
 
+    uint dayStart = block.timestamp - (block.timestamp % 1 days);
+
     event WillCreated(uint indexed willId, address indexed owner, address indexed recipient);
     event WillExecuted(uint indexed willId);
 
@@ -24,7 +26,7 @@ contract DigitalWill {
         bool _isVerified
     ) public {
         require(_recipient != address(0), "Incorrect repicient address!");
-        require(_unlockTime >= block.timestamp, "Unlock date must be today or later");
+        require(_unlockTime >= dayStart, "Unlock date must be today or later");
 
         wills.push(Will({
             owner: msg.sender,

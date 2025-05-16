@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import axios from 'axios';
 
 export default function Login() {
   const router = useRouter();
@@ -30,29 +31,24 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
+      const response = await axios.post('http://localhost:5000/api/auth/login', formData);
 
-      const data = await response.json();
+      const { token, user } = response.data;
 
-      if (!response.ok) {
-        setError(data.message || 'Ошибка входа');
-        return;
-      }
+      // Сохраняем токен и пользователя
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
 
-      localStorage.setItem('user', JSON.stringify(data));
       router.push('/dashboard');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Ошибка при входе:', error);
-      setError('Ошибка при подключении к серверу');
-    }
-    finally {
-    setIsLoading(false);
+      if (error.response && error.response.data?.error) {
+        setError(error.response.data.error);
+      } else {
+        setError('Ошибка при подключении к серверу');
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 

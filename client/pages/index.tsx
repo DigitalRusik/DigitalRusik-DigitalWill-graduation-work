@@ -42,8 +42,7 @@ export default function Register() {
         setError(data.message || 'Ошибка регистрации');
         return;
     }
-    localStorage.setItem('user', JSON.stringify(data));
-    router.push('/dashboard');
+    router.push('/login');
   } catch (error) {
       console.error('Ошибка при регистрации:', error);
       setError('Ошибка при подключении к серверу');

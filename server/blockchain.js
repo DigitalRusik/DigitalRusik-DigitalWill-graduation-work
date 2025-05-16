@@ -1,23 +1,87 @@
 const { ethers } = require("ethers");
+const db = require("./db");
 const fs = require("fs");
 const path = require("path");
 
-// 1. Настройка провайдера Hardhat (локальная сеть)
-const provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
+const provider = new ethers.providers.JsonRpcProvider("http://localhost:8545");
 
-// 2. Один из приватных ключей от hardhat node (временно, безопасно в локалке)
-const PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"; // Аккаунт 0
+// Загрузка ABI и bytecode
+const contractArtifact = JSON.parse(
+  fs.readFileSync(
+    path.join(__dirname, "..", "artifacts", "contracts", "DigitalWill.sol", "DigitalWill.json")
+  )
+);
+const abi = contractArtifact.abi;
+const bytecode = contractArtifact.bytecode;
 
-const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
+async function ensureFunds(address) {
+  const threshold = ethers.utils.parseEther("0.05");
 
-// 3. Путь до ABI
-const contractAddress = "0x5fbdb2315678afecb367f032d93f642f64180aa3";
-const abiPath = path.join(__dirname, "../artifacts/contracts/DigitalWill.sol/DigitalWill.json");
-const contractJson = JSON.parse(fs.readFileSync(abiPath));
-const abi = contractJson.abi;
+  let balance = await provider.getBalance(address);
 
-// 4. Контракт с подписантом
-const contract = new ethers.Contract(contractAddress, abi, wallet);
+  if (balance.gte(threshold)) {
+    console.log(`У пользователя ${address} достаточно средств: ${ethers.utils.formatEther(balance)} ETH`);
+    return;
+  }
 
-module.exports = contract;
+  console.log(`У пользователя ${address} недостаточно ETH (${ethers.utils.formatEther(balance)} ETH). Отправляем...`);
 
+  const signer = provider.getSigner(0); // Ganache-аккаунт
+  const tx = await signer.sendTransaction({
+    to: address,
+    value: ethers.utils.parseEther("5.0"),
+  });
+
+  await tx.wait();
+  console.log(`Отправлено 5 ETH на ${address}.`);
+
+  // Ждём появления средств (с перезапросом)
+  let retries = 0;
+  while (retries < 10) {
+    balance = await provider.getBalance(address);
+    if (balance.gte(threshold)) {
+      return;
+    }
+
+    await new Promise(r => setTimeout(r, 1000));
+    retries++;
+  }
+
+  throw new Error(`Не удалось подтвердить поступление ETH на ${address}`);
+}
+
+
+// Получить кошелек и контракт от имени пользователя
+async function getUserContract(userId, contractAddress) {
+  const result = await db.query('SELECT private_key FROM users WHERE id = $1', [userId]);
+  if (result.rows.length === 0) throw new Error("Пользователь не найден");
+
+  const privateKey = result.rows[0].private_key;
+  const wallet = new ethers.Wallet(privateKey, provider);
+
+  await ensureFunds(wallet.address);
+
+  const contract = new ethers.Contract(contractAddress, abi, wallet);
+  return contract;
+}
+
+// Деплой контракта от имени пользователя (если нужно)
+async function deployContract(userId, ...constructorArgs) {
+  const result = await db.query('SELECT private_key FROM users WHERE id = $1', [userId]);
+  if (result.rows.length === 0) throw new Error("Пользователь не найден");
+
+  const wallet = new ethers.Wallet(result.rows[0].private_key, provider);
+  await ensureFunds(wallet.address);
+
+  const factory = new ethers.ContractFactory(abi, bytecode, wallet);
+  const contract = await factory.deploy(...constructorArgs);
+  await contract.deployed();
+  console.log("Контракт задеплоен по адресу:", contract.address);
+  return contract.address;
+}
+
+module.exports = {
+  getUserContract,
+  deployContract,
+  ensureFunds,
+};
