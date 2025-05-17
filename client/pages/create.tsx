@@ -4,7 +4,6 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 
 export default function CreateWill() {
-  const [ethAddress, setEthAddress] = useState('');
   const [recipient, setRecipient] = useState('');
   const [containers, setContainers] = useState<any[]>([]);
   const [selectedContainer, setSelectedContainer] = useState('');
@@ -15,7 +14,7 @@ export default function CreateWill() {
   const [error, setError] = useState('');
   const router = useRouter();
   const [isRecipientRegistered, setIsRecipientRegistered] = useState(false);
-  const [userVerified, setUserVerified] = useState(true);
+  const [userVerified, setUserVerified] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
 
 
@@ -32,8 +31,7 @@ export default function CreateWill() {
         } else {
           console.warn("Не удалось получить userId");
         }
-      if (user.ethAddress) {
-        setEthAddress(user.ethAddress);
+      if (user) {
         fetchContainers(user.id);
         axios.get(`http://localhost:5000/api/auth/status/${user.email}`)
         .then(res => setUserVerified(res.data.isVerified))
@@ -42,7 +40,7 @@ export default function CreateWill() {
           setUserVerified(false);
         });
       } else {
-        setEthAddress('Адрес не найден');
+        console.error('Пользователь не найден');
       }
     }
   }, []);
@@ -185,7 +183,16 @@ export default function CreateWill() {
           </Link>
         </div>
         {!userVerified ? (
-          <p>Ваш профиль не подтверждён. Вы не можете создавать завещания.</p>
+          <div>
+            <p>Ваш профиль не подтверждён. Вы не можете создавать завещания.
+              Пройдите верификацию, перейдя по кнопке на нужную страницу.
+            </p>
+            <Link href="/kyc">
+                <button>
+                  Пройти верификацию
+                </button>
+              </Link>
+          </div>
         ) : (
           <p>Ваш аккаунт подтверждён! Вы можете создавать завещание.</p>
         )}

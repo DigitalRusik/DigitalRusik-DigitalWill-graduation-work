@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const app = express();
+const path = require('path');
 
 require('dotenv').config();
 
@@ -17,6 +18,10 @@ const willsRoutes = require('./routes/wills');
 app.use('/api/wills', willsRoutes);
 const contractRoutes = require('./routes/contract');
 app.use('/api/contract', contractRoutes);
+const kycRoutes = require('./routes/kyc');
+app.use('/api/kyc', kycRoutes);
+
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 
 const PORT = process.env.PORT || 5000;

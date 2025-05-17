@@ -66,9 +66,9 @@ router.post('/login', async (req, res) => {
       user: {
         id: user.id,
         email: user.email,
-        fullName: `${user.last_name} ${user.first_name} ${user.patronymic}`
+        fullName: `${user.last_name} ${user.first_name} ${user.patronymic}`,
+        isVerified: user.is_verified
       },
-      //ethAddress: user.eth_address
     });
   } catch (err) {
     console.error(err);
@@ -97,7 +97,7 @@ router.get('/users', async (req, res) => {
   }
 });
 
-// =====Проверка статуса подтверждения пользователя=====
+// =====Проверка статуса верификации пользователя=====
 router.get('/status/:email', async (req, res) => {
   const { email } = req.params;
 
@@ -117,5 +117,17 @@ router.get('/status/:email', async (req, res) => {
     res.status(500).json({ message: 'Ошибка сервера' });
   }
 });
+
+// =====Авторизация администратора=====
+router.post('/admin-login', (req, res) => {
+  const { login, password } = req.body;
+
+  if (login === 'admin' && password === 'admin') {
+    return res.json({ message: 'Вход успешен', role: 'admin' });
+  } else {
+    return res.status(401).json({ error: 'Неверный логин или пароль' });
+  }
+});
+
 
 module.exports = router;
