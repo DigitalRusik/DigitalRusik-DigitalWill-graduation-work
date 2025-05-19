@@ -93,12 +93,12 @@ export default function Wills() {
         {error && <div className="error-text">{error}</div>}
 
         {/* Созданные завещания */}
-        <section>
-          <h2>Созданные завещания</h2>
+        <section>         
           {Array.isArray(createdWills) && createdWills.length === 0 ? (
-            <p>Нет созданных завещаний</p>
+            <p></p>
           ) : (
             <ul>
+              <h2>Созданные завещания</h2>
               {Array.isArray(createdWills) && createdWills.map((will: any) => (
                 <li key={will.id}>
                   <p><strong>Наследник: </strong>{will.recipient_name}</p>
@@ -106,13 +106,12 @@ export default function Wills() {
                   <p><strong>Дата разблокировки: </strong> {new Date(will.unlock_time * 1000).toLocaleDateString('ru-RU')}</p>
                 </li>
               ))}
+              <hr></hr>
+              <hr></hr>
+              <hr></hr>
             </ul>
           )}
         </section>
-
-        <hr></hr>
-        <hr></hr>
-        <hr></hr>
 
         {/* Завещания, оставленные пользователю */}
         <section>

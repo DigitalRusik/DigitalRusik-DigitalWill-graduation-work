@@ -143,103 +143,57 @@ router.delete('/:id', async (req, res) => {
 });
 
 // ===== Скачивание файлов завещания =====
-// router.get('/download-will/:willId', async (req, res) => {
-//   const { willId } = req.params;
-
-//   try {
-//     // 1. Получаем завещание
-//     const willResult = await pool.query('SELECT owner, data_hash FROM wills WHERE id = $1', [willId]);
-//     if (willResult.rows.length === 0) {
-//       return res.status(404).json({ message: 'Завещание не найдено' });
-//     }
-//     const { owner: ownerAddress, data_hash: containerName } = willResult.rows[0];
-
-//     // 2. Получаем encryption key
-//     const userResult = await pool.query('SELECT encryption_key FROM users WHERE eth_address = $1', [ownerAddress]);
-//     if (userResult.rows.length === 0) {
-//       return res.status(404).json({ message: 'Пользователь не найден' });
-//     }
-//     const encryptionKey = userResult.rows[0].encryption_key;
-//     const keyBuffer = crypto.scryptSync(encryptionKey, 'salt', 32);
-
-//     // 3. Получаем файлы контейнера
-//     const containerResult = await pool.query('SELECT file_path FROM containers WHERE name = $1', [containerName]);
-//     if (containerResult.rows.length === 0) {
-//       return res.status(404).json({ message: 'Контейнер не найден' });
-//     }
-
-//     const filesArray = JSON.parse(containerResult.rows[0].file_path);
-//     if (!Array.isArray(filesArray) || filesArray.length === 0) {
-//       return res.status(404).json({ message: 'Файлы в контейнере не найдены' });
-//     }
-
-//     // 4. Готовим архив
-//     const safeName = containerName.replace(/[^\w\d_-]/g, "_"); // "Безопасное" имя (замена кириллицы и др. символов)
-//     res.setHeader('Content-Disposition', `attachment; filename=${safeName}.zip`);
-//     res.setHeader('Content-Type', 'application/zip');
-
-//     const archive = archiver('zip', { zlib: { level: 9 } });
-//     archive.pipe(res);
-
-//     for (const file of filesArray) {
-//       const encryptedFileRelativePath = file.path;
-//       const ivHex = file.iv;
-//       const fileName = file.name;
-//       const fullFilePath = path.resolve(__dirname, '..', encryptedFileRelativePath);
-//       const encryptedData = fs.readFileSync(fullFilePath);
-//       const ivBuffer = Buffer.from(ivHex, 'hex');
-//       const decipher = crypto.createDecipheriv('aes-256-cbc', keyBuffer, ivBuffer);
-//       const decryptedData = Buffer.concat([decipher.update(encryptedData), decipher.final()]);
-//       archive.append(decryptedData, { name: fileName });
-//     }
-
-//     await archive.finalize();
-
-//   } catch (err) {
-//     console.error('Ошибка при скачивании завещания:', err);
-//     res.status(500).json({ message: 'Ошибка сервера при скачивании файла' });
-//   }
-// });
-
 router.get('/download-will/:willId', async (req, res) => {
   const { willId } = req.params;
 
   try {
     // 0. Получаем полные данные завещания
     const willResult = await pool.query(
-      'SELECT owner, recipient, data_hash FROM wills WHERE id = $1',
+      'SELECT owner, recipient, data_hash, contract_will_id FROM wills WHERE id = $1',
       [willId]
     );
     if (willResult.rows.length === 0) {
       return res.status(404).json({ message: 'Завещание не найдено' });
     }
 
-    const { owner: ownerAddress, recipient, data_hash: containerName } = willResult.rows[0];
+    const { owner: ownerAddress, recipient, data_hash: containerName, contract_will_id } = willResult.rows[0];
 
-    // 1. Получаем contract_address и private_key получателя
+    // 1. Получаем private_key получателя и contract_address владельца
     const recipientRes = await pool.query(
-      'SELECT private_key, contract_address FROM users WHERE email = $1',
+      'SELECT private_key FROM users WHERE email = $1',
       [recipient]
     );
     if (recipientRes.rows.length === 0) {
-      return res.status(403).json({ message: 'Наследник не найден' });
+      return res.status(403).json({ message: 'Получатель не найден' });
     }
+    const recipientPrivateKey = recipientRes.rows[0].private_key;
 
-    const { private_key: recipientPrivateKey, contract_address } = recipientRes.rows[0];
+    const ownerRes = await pool.query(
+      'SELECT contract_address FROM users WHERE eth_address = $1',
+      [ownerAddress]
+    );
+    if (ownerRes.rows.length === 0 || !ownerRes.rows[0].contract_address) {
+      return res.status(404).json({ message: 'Контракт владельца не найден' });
+    }
+    const contract_address = ownerRes.rows[0].contract_address;
 
     // 2. Вызываем executeWill от имени получателя
     const recipientWallet = new ethers.Wallet(recipientPrivateKey, provider);
     await ensureFunds(recipientWallet.address);
 
     const contract = new ethers.Contract(contract_address, contractArtifact.abi, recipientWallet);
+    console.log('ID контракта завещания', contract_will_id);
+    if (contract_will_id == null) {
+      return res.status(400).json({ message: 'Завещание не зарегистрировано в контракте' });
+    }
 
     try {
-      const tx = await contract.executeWill(willId);
+      const tx = await contract.executeWill(contract_will_id);
       await tx.wait();
       console.log(`Завещание ${willId} исполнено через контракт`);
     } catch (e) {
       console.error("Смарт-контракт отказал в исполнении:", e.reason || e.message);
-      return res.status(403).json({ message: 'Завещание ещё не разблокировано или уже исполнено' });
+      return res.status(403).json({ message: 'Завещание ещё не разблокировано' });
     }
 
     // 3. Получаем encryption key ВЛАДЕЛЬЦА (для дешифровки)

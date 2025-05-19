@@ -7,12 +7,10 @@ require('dotenv').config();
 const verifyToken = require("../verifyToken");
 
 const contractABI = require('../../artifacts/contracts/DigitalWill.sol/DigitalWill.json').abi;
-//const provider = new ethers.providers.JsonRpcProvider(process.env.LOCAL_RPC_URL);
 const provider = new ethers.providers.JsonRpcProvider("http://localhost:8545");
 
 async function createWillOnChain(userId, recipientAddress, dataHash, unlockTime) {
   try {
-    // Получаем все необходимые данные заранее
     const userRes = await pool.query(
       "SELECT private_key, eth_address, contract_address, is_verified FROM users WHERE id = $1",
       [userId]
@@ -22,7 +20,6 @@ async function createWillOnChain(userId, recipientAddress, dataHash, unlockTime)
       return { success: false, error: "Пользователь не найден" };
     }
 
-    // Извлекаем данные пользователя
     const {
       private_key,
       eth_address,
@@ -34,7 +31,7 @@ async function createWillOnChain(userId, recipientAddress, dataHash, unlockTime)
     let userContractAddress = contract_address;
 
     await ensureFunds(signer.address);
-        // Ждём, пока баланс не поднимется до 0.05 ETH
+
     let retries = 0;
     while (retries < 10) {
       const balance = await provider.getBalance(signer.address);
@@ -44,28 +41,33 @@ async function createWillOnChain(userId, recipientAddress, dataHash, unlockTime)
       retries++;
     }
 
-    // Если контракт ещё не задеплоен — создаём и сохраняем
     if (!userContractAddress) {
-      const newAddress = await deployContract(userId); // деплой от имени пользователя
-
-      // Обновляем поле contract_address
+      const newAddress = await deployContract(userId);
       await pool.query(
         "UPDATE users SET contract_address = $1 WHERE id = $2",
         [newAddress, userId]
       );
-
       userContractAddress = newAddress;
       console.log("(contract.js) Новый контракт задеплоен:", newAddress);
     }
-    
 
-    // Создаём контракт и вызываем метод
     const contract = new ethers.Contract(userContractAddress, contractABI, signer);
     const tx = await contract.createWill(recipientAddress, dataHash, unlockTime, is_verified);
     const receipt = await tx.wait();
 
-    console.log("Завещание создано:", receipt.transactionHash);
-    return { success: true, txHash: receipt.transactionHash };
+    const event = receipt.events?.find(e => e.event === 'WillCreated');
+    if (!event) {
+      return { success: false, error: "Событие WillCreated не найдено" };
+    }
+
+    const contractWillId = event.args.willId.toNumber();
+    console.log("Завещание создано:", receipt.transactionHash, "Contract Will ID:", contractWillId);
+
+    return {
+      success: true,
+      txHash: receipt.transactionHash,
+      contractWillId
+    };
 
   } catch (err) {
     console.error("Ошибка при создании завещания:", err);
@@ -73,18 +75,38 @@ async function createWillOnChain(userId, recipientAddress, dataHash, unlockTime)
   }
 }
 
-
-
 router.post("/create-will", verifyToken, async (req, res) => {
   const userId = req.user.id;
-  const { recipientEthAddress, dataHash, unlockTime } = req.body;
+  const { recipientEmail, dataHash, unlockTime } = req.body;
 
-  const result = await createWillOnChain(userId, recipientEthAddress, dataHash, unlockTime);
+  try {
+    // Проверка: существует ли получатель
+    const recipientResult = await pool.query(
+      'SELECT eth_address FROM users WHERE email = $1',
+      [recipientEmail]
+    );
+    if (recipientResult.rows.length === 0) {
+      return res.status(400).json({ error: 'Пользователь-получатель не зарегистрирован' });
+    }
 
-  if (result.success) {
-    res.status(200).json({ message: "Завещание создано", txHash: result.txHash });
-  } else {
-    res.status(500).json({ error: result.error });
+    const recipientEth = recipientResult.rows[0].eth_address;
+
+    // Создание завещания в контракте
+    const result = await createWillOnChain(userId, recipientEth, dataHash, unlockTime);
+    if (!result.success) {
+      return res.status(500).json({ error: result.error });
+    }
+
+    // Возвращаем только результат работы смарт-контракта
+    return res.status(201).json({
+      message: "Завещание создано в блокчейне",
+      txHash: result.txHash,
+      contractWillId: result.contractWillId
+    });
+
+  } catch (err) {
+    console.error("Ошибка при создании завещания:", err);
+    res.status(500).json({ error: "Ошибка сервера" });
   }
 });
 

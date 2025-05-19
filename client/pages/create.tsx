@@ -118,49 +118,58 @@ export default function CreateWill() {
   
   // Подтверждение данных в модальном окне и отправка на backend
   const handleConfirmWill = async () => {
-    setIsCreating(true);
-    try {
-      const unlockTime = Math.floor(new Date(unlockDate).getTime() / 1000);
-      await axios.post('http://localhost:5000/api/wills', {
-        recipient,
-        containerId: selectedContainer,
-        unlockTime,
-      },
-    {
+  setIsCreating(true);
+  try {
+    const unlockTime = Math.floor(new Date(unlockDate).getTime() / 1000);
+
+    const usersRes = await axios.get('http://localhost:5000/api/auth/users');
+    const allUsers = usersRes.data;
+    const recipientUser = allUsers.find((u: any) => u.email === recipient);
+
+    if (!recipientUser) {
+      setError('Пользователь-получатель не найден');
+      setIsCreating(false);
+      return;
+    }
+
+    const selectedRecipientEth = recipientUser.eth_address;
+
+    // 1. Сначала создаём завещание в смарт-контракте
+    const contractRes = await axios.post('http://localhost:5000/api/contract/create-will', {
+      recipientEmail: recipient,
+      dataHash: selectedContainer,
+      unlockTime
+    }, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem('token')}`,
       }
     });
-      // После успешного создания завещания в БД
-      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
 
-      const usersRes = await axios.get('http://localhost:5000/api/auth/users');
-      const allUsers = usersRes.data;
-      const recipient_email = allUsers.find((u: any) => u.email === recipient);
-      const selectedRecipientEth = recipient_email?.eth_address;
-      if (!recipient_email) {
-        console.error('Адрес получателя не найден!');
-        return;
+    const contractWillId = contractRes.data.contractWillId;
+
+    // 2. Теперь создаём завещание в БД
+    await axios.post('http://localhost:5000/api/wills', {
+      recipient,
+      containerId: selectedContainer,
+      unlockTime,
+      recipientFullName: recipientFullName || null,
+      contractWillId
+    }, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
       }
-      
-      await axios.post('http://localhost:5000/api/contract/create-will', {
-        recipientEthAddress: selectedRecipientEth,
-        dataHash: selectedContainer,
-        unlockTime: Math.floor(new Date(unlockDate).getTime() / 1000),
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        }
-      });
-      setIsCreating(false);
-      alert('Завещание создано');
-      router.push('/dashboard');
-    } catch (err) {
-      console.error('Ошибка при создании завещания:', err);
-      setIsCreating(false);
-    }
-  };
+    });
+
+    setIsCreating(false);
+    alert('Завещание создано');
+    router.push('/dashboard');
+  } catch (err) {
+    console.error('Ошибка при создании завещания:', err);
+    setError('Ошибка при создании завещания');
+    setIsCreating(false);
+  }
+};
+
 
   //----------------------------------------------------------------------------
   //--------------------------HTML----------------------------------------------
@@ -183,7 +192,7 @@ export default function CreateWill() {
           </Link>
         </div>
         {!userVerified ? (
-          <div>
+          <div className="center-will">
             <p>Ваш профиль не подтверждён. Вы не можете создавать завещания.
               Пройдите верификацию, перейдя по кнопке на нужную страницу.
             </p>

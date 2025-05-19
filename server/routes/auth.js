@@ -22,10 +22,10 @@ router.post('/register', async (req, res) => {
     const encryptionKey = crypto.randomBytes(32).toString('hex');
 
     const result = await pool.query(
-      `INSERT INTO users (first_name, last_name, patronymic, email, password, eth_address, private_key, encryption_key)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO users (first_name, last_name, patronymic, email, password, eth_address, private_key, encryption_key, is_verified)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING id, email, eth_address`,
-      [firstName, lastName, patronymic, email, hashedPassword, ethAddress, privateKey, encryptionKey]
+      [firstName, lastName, patronymic, email, hashedPassword, ethAddress, privateKey, encryptionKey, false]
     );
 
     res.status(201).json({ message: 'Пользователь зарегистрирован', user: result.rows[0]});

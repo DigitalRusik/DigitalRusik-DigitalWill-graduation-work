@@ -66,7 +66,7 @@ export default function Dashboard() {
         </div>
         <div className="main-buttons">
           {!verified && (
-            <Link href="/kyc">
+            <Link href="/verification">
               <button>
                 Пройти верификацию
               </button>

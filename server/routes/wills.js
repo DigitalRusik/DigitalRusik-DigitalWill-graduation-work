@@ -5,10 +5,10 @@ const verifyToken = require('../verifyToken');
 
 // =====Создание завещания=====
 router.post('/', verifyToken, async (req, res) => {
-  const { recipient, containerId, unlockTime, recipientFullName } = req.body;
+  const { recipient, containerId, unlockTime, recipientFullName, contractWillId } = req.body;
 
-  if (!recipient || !containerId || !unlockTime) {
-    return res.status(400).json({ message: 'Не все поля заполнены' });
+  if (!recipient || !containerId || !unlockTime || contractWillId == null) {
+    return res.status(400).json({ message: 'Не все поля заполнены или нет contractWillId' });
   }
 
   try {
@@ -38,8 +38,9 @@ router.post('/', verifyToken, async (req, res) => {
 
     // Сохраняем завещание
     const result = await pool.query(
-      'INSERT INTO wills (owner, recipient, data_hash, unlock_time, recipient_full_name, container_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [owner, recipient, dataHash, unlockTime, recipientFullName || null, containerId]
+      `INSERT INTO wills (owner, recipient, data_hash, unlock_time, recipient_full_name, container_id, contract_will_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [owner, recipient, dataHash, unlockTime, recipientFullName || null, containerId, contractWillId]
     );
 
     res.status(201).json({ message: 'Завещание успешно создано', will: result.rows[0] });
@@ -48,6 +49,7 @@ router.post('/', verifyToken, async (req, res) => {
     res.status(500).json({ message: 'Ошибка сервера' });
   }
 });
+
 
 // =====Получение всех завещаний для пользователя=====
 router.get('/myWills', verifyToken, async (req, res) => {
