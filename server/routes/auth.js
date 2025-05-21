@@ -5,30 +5,66 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { ethers } = require('ethers');
 
-
+const contractABI = require('../../artifacts/contracts/DigitalWill.sol/DigitalWill.json').abi;
+const provider = new ethers.providers.JsonRpcProvider("http://localhost:8545");
 
 router.post('/register', async (req, res) => {
   const { firstName, lastName, patronymic, email, password } = req.body;
 
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
+    const ethWallet = ethers.Wallet.createRandom();
+    const ethAddress = ethWallet.address;
+    const privateKey = ethWallet.privateKey;
 
-    // Генерация Ethereum аккаунта
-    const wallet = ethers.Wallet.createRandom();
-    const ethAddress = wallet.address;
-    const privateKey = wallet.privateKey;
-
-    // Генерация ключа шифрования 
     const encryptionKey = crypto.randomBytes(32).toString('hex');
 
     const result = await pool.query(
-      `INSERT INTO users (first_name, last_name, patronymic, email, password, eth_address, private_key, encryption_key, is_verified)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       RETURNING id, email, eth_address`,
-      [firstName, lastName, patronymic, email, hashedPassword, ethAddress, privateKey, encryptionKey, false]
+      'INSERT INTO users (first_name, last_name, patronymic, email, password, eth_address, encryption_key, private_key, is_verified) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, false) RETURNING *',
+      [firstName, lastName, patronymic, email, hashedPassword, ethAddress, encryptionKey, privateKey]
     );
 
-    res.status(201).json({ message: 'Пользователь зарегистрирован', user: result.rows[0]});
+    const newUser = result.rows[0];
+
+    // === Автоустановка получателя в контракте, если завещание на него уже существует ===
+    try {
+      const willsRes = await pool.query(
+        `SELECT w.id, w.contract_will_id, w.recipient_full_name, u.private_key, u.contract_address
+         FROM wills w
+         JOIN users u ON u.eth_address = w.owner
+         WHERE w.recipient = $1 AND w.contract_will_id IS NOT NULL`,
+        [newUser.email]
+      );
+
+      for (const will of willsRes.rows) {
+        const { id, contract_will_id, recipient_full_name, private_key, contract_address } = will;
+
+        if (!contract_address || contract_will_id == null) continue;
+
+        // Сравниваем ФИО
+        const fullNameFromDB = (recipient_full_name || '').trim().toLowerCase();
+        const fullNameUser = `${newUser.last_name} ${newUser.first_name} ${newUser.patronymic}`.trim().toLowerCase();
+        if (fullNameFromDB && fullNameFromDB !== fullNameUser) {
+          console.warn(`Несовпадение ФИО для ${newUser.email}, завещание ${id} не будет назначено`);
+          continue;
+        }
+
+        const signer = new ethers.Wallet(private_key, provider);
+        const contract = new ethers.Contract(contract_address, contractABI, signer);
+
+        const onchainWill = await contract.wills(contract_will_id);
+        if (onchainWill.recipient !== ethers.constants.AddressZero) continue;
+
+        const tx = await contract.setRecipient(contract_will_id, newUser.eth_address);
+        await tx.wait();
+
+        console.log(`Назначен получатель для willId ${contract_will_id}`);
+      }
+    } catch (err) {
+      console.error('Ошибка при установке получателя для завещаний:', err);
+    }
+    
+   res.status(201).json({ message: 'Пользователь зарегистрирован', user: result.rows[0]});
   } catch (err) {
     console.error(err);
     if (err.code === '23505') {

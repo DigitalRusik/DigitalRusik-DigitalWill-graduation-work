@@ -122,17 +122,16 @@ export default function CreateWill() {
   try {
     const unlockTime = Math.floor(new Date(unlockDate).getTime() / 1000);
 
-    const usersRes = await axios.get('http://localhost:5000/api/auth/users');
-    const allUsers = usersRes.data;
-    const recipientUser = allUsers.find((u: any) => u.email === recipient);
+    // const usersRes = await axios.get('http://localhost:5000/api/auth/users');
+    // const allUsers = usersRes.data;
+    // const recipientUser = allUsers.find((u: any) => u.email === recipient);
 
-    if (!recipientUser) {
-      setError('Пользователь-получатель не найден');
-      setIsCreating(false);
-      return;
-    }
+    // if (!recipientUser) {
+    //   setError('Пользователь-получатель не найден');
+    //   setIsCreating(false);
+    //   return;
+    // }
 
-    const selectedRecipientEth = recipientUser.eth_address;
 
     // 1. Сначала создаём завещание в смарт-контракте
     const contractRes = await axios.post('http://localhost:5000/api/contract/create-will', {

@@ -199,6 +199,16 @@ body,
   margin-top: 10px;
 }
 
+.download-button-inactive {
+  padding: 8px 12px;
+  background-color: #868686;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
 .download-button:hover {
   background-color: #45a049;
 }

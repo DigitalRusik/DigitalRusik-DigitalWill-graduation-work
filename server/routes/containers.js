@@ -183,9 +183,20 @@ router.get('/download-will/:willId', async (req, res) => {
 
     const contract = new ethers.Contract(contract_address, contractArtifact.abi, recipientWallet);
     console.log('ID контракта завещания', contract_will_id);
+    const onchainWill = await contract.wills(contract_will_id);
+    console.log('Recipient в контракте:', onchainWill.recipient);
     if (contract_will_id == null) {
       return res.status(400).json({ message: 'Завещание не зарегистрировано в контракте' });
     }
+
+    // try {
+    //   await contract.callStatic.executeWill(contract_will_id);
+    //   const tx = await contract.executeWill(contract_will_id);
+    //   await tx.wait();
+    // } catch (err) {
+    //   console.error("Смарт-контракт отказал в исполнении:", err.reason || err.error?.message || err);
+    //   return res.status(403).json({ message: 'Завещание не может быть исполнено: ' + (err.reason || 'неизвестная ошибка') });
+    // }
 
     try {
       const tx = await contract.executeWill(contract_will_id);

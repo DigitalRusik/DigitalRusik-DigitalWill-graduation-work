@@ -25,7 +25,6 @@ contract DigitalWill {
         uint256 _unlockTime,
         bool _isVerified
     ) public {
-        require(_recipient != address(0), "Incorrect repicient address!");
         require(_unlockTime >= dayStart, "Unlock date must be today or later");
 
         wills.push(Will({
@@ -39,6 +38,16 @@ contract DigitalWill {
 
         emit WillCreated(wills.length - 1, msg.sender, _recipient);
     }
+
+    // Добавление адреса наследника после его регистрации
+    function setRecipient(uint willId, address recipient) public {
+        require(willId < wills.length, "Invalid will ID");
+        Will storage will = wills[willId];
+        require(will.recipient == address(0), "Recipient already set");
+        require(!will.isExecuted, "Already executed");
+        will.recipient = recipient;
+    }
+
 
     // Получение всех завещаний, созданных пользователем
     function getMyWills() public view returns (Will[] memory) {
@@ -65,9 +74,10 @@ contract DigitalWill {
     function executeWill(uint willId) public {
         require(willId < wills.length, "Incorrect will ID");
         Will storage will = wills[willId];
-        require(msg.sender == will.recipient, "You are not the recipient of this will");
+        require(will.recipient != address(0), "Recipient not set yet");
+        require(msg.sender == will.recipient, "Not authorized");
         require(!will.isExecuted, "Will is executed");
-        require(block.timestamp > will.unlockTime, "The will is still locked");
+        require(block.timestamp >= will.unlockTime, "The will is still locked");
 
         will.isExecuted = true;
 

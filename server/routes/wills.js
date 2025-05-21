@@ -55,9 +55,9 @@ router.post('/', verifyToken, async (req, res) => {
 router.get('/myWills', verifyToken, async (req, res) => {
   try {
     const userId = req.user.id;
-    // Получаем email и eth_address пользователя
+    // Получаем email, eth_address и ФИО пользователя
     const result = await pool.query(
-      'SELECT email, eth_address FROM users WHERE id = $1',
+      'SELECT email, eth_address, first_name, last_name, patronymic FROM users WHERE id = $1',
       [userId]
     );
 
@@ -65,7 +65,8 @@ router.get('/myWills', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'Пользователь не найден' });
     }
 
-    const { email, eth_address } = result.rows[0];
+    const { email, eth_address, first_name, last_name, patronymic } = result.rows[0];
+    const fullName = `${last_name} ${first_name} ${patronymic}`.trim().toLowerCase();
 
     // Получаем отправленные
     const sent = await pool.query(
@@ -78,7 +79,7 @@ router.get('/myWills', verifyToken, async (req, res) => {
     );
 
     // Получаем полученные
-    const received = await pool.query(
+    const receivedRes = await pool.query(
       `SELECT w.*, u1.last_name || ' ' || u1.first_name || ' ' || u1.patronymic AS owner_name
       FROM wills w
       LEFT JOIN users u1 ON w.owner = u1.eth_address
@@ -86,15 +87,22 @@ router.get('/myWills', verifyToken, async (req, res) => {
       ORDER BY w.created_at DESC`,
       [email]
     );
+
+    const filteredReceived = receivedRes.rows.filter(will => {
+      if (!will.recipient_full_name) return true; // допустим, ФИО не задано
+      return will.recipient_full_name.trim().toLowerCase() === fullName;
+    });
+
     res.json({
       sent: sent.rows,
-      received: received.rows,
+      received: filteredReceived,
     });
   } catch (err) {
     console.error('Ошибка при получении завещаний:', err);
     res.status(500).json({ message: 'Ошибка сервера' });
   }
 });
+
 
 // =====Получение файлов контейнера=====
 router.get('/by-name/:name', async (req, res) => {
