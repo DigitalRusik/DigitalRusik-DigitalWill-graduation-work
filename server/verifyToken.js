@@ -12,7 +12,7 @@ function verifyToken(req, res, next) {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // Добавляем пользователя в req
+    req.user = decoded;
     next();
   } catch (err) {
     return res.status(403).json({ error: "Недействительный токен" });

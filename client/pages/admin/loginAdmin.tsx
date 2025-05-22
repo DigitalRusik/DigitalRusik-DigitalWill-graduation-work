@@ -22,13 +22,13 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-xl font-bold mb-4">Вход администратора</h1>
-      {error && <p className="text-red-500">{error}</p>}
+    <div>
+      <h1>Вход администратора</h1>
+      {error && <p className="error-text">{error}</p>}
       <form onSubmit={handleSubmit}>
-        <input type="text" placeholder="Логин" value={login} onChange={(e) => setLogin(e.target.value)} className="border px-2 py-1 mr-2" />
-        <input type="password" placeholder="Пароль" value={password} onChange={(e) => setPassword(e.target.value)} className="border px-2 py-1 mr-2" />
-        <button type="submit" className="bg-blue-600 text-white px-4 py-1 rounded">Войти</button>
+        <input type="text" placeholder="Логин" value={login} onChange={(e) => setLogin(e.target.value)}/>
+        <input type="password" placeholder="Пароль" value={password} onChange={(e) => setPassword(e.target.value)}/>
+        <button type="submit">Войти</button>
       </form>
     </div>
   );

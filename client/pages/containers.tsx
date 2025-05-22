@@ -20,6 +20,7 @@ export default function Containers() {
   const [targetFileName, setTargetFileName] = useState('');
   const [unlockedContainers, setUnlockedContainers] = useState<number[]>([]);
   const [modalError, setModalError] = useState("");
+  const [username, setUsername] = useState('');
 
 
   const router = useRouter();
@@ -30,6 +31,7 @@ export default function Containers() {
       router.push('/login');
     } else {
       const parsed = JSON.parse(stored);
+      setUsername(parsed.fullName || 'Пользователь');
       setUser(parsed);
       fetchContainers(parsed.id);
     }
@@ -113,7 +115,7 @@ export default function Containers() {
       setError('Ошибка при создании контейнера');
     }
   };
-  // Модальное окно с паролем
+  // =====Модальное окно с паролем=====
   const openPasswordModal = (mode: 'delete' | 'view', containerId: number, fileName?: string) => {
     setModalMode(mode);
     setTargetContainerId(containerId);
@@ -191,103 +193,107 @@ export default function Containers() {
   //--------------------------HTML----------------------------------------------
   //----------------------------------------------------------------------------
   return (
-    <main className="main-container">
-        <div className="head-page">
-            <h1>Зашифрованные контейнеры</h1>
-        </div>
-        <div>
-          <hr></hr>
-        </div>
-        <div className="div-body">
-          <div className="exit-button">
-              <Link href="/dashboard">
-                  <button>
-                      Обратно на главную страницу
-                  </button>
-              </Link>
-          </div>
-          <form onSubmit={handleSubmit}>
-            <input
-              type="text"
-              placeholder="Название контейнера"
-              value={containerName}
-              onChange={(e) => setContainerName(e.target.value)}
-            />
-          <div>
-            <label>Основной файл (обязательный):</label>
-            <p>
-              Это должно быть завещание в формате .pdf, .doc или .docx
-            </p>
-            <input
-              type="file"
-              accept=".pdf,.doc,.docx"
-              onChange={handleMainFileChange}
-              required
-            />
-          </div>
-          <div>
-            <label>Дополнительные файлы (необязательно):</label>
-            <p>Максимум 20 файлов</p>
-            <input type="file" multiple onChange={handleAdditionalChange} />
-          </div>
+    <main className="page-container">
+  <div className="header-bar">
+    <div className="header-left">
+      <Link href="/dashboard">
+        <img src="/images/logo.png" alt="Логотип" className="header-logo" />
+      </Link>
+    </div>
+    <div className="header-center">
+      <h1>Контейнеры с данными</h1>
+    </div>
+    <div className="header-right">
+      <span>{username}</span>
+    </div>
+  </div>
+  <div>
+    <hr />
+  </div>
+  <div className="div-body">
+    <div className="exit-button">
+      <Link href="/dashboard">
+        <button>
+          Обратно на главную страницу
+        </button>
+      </Link>
+    </div>
+    <form onSubmit={handleSubmit} className="container-form">
+      <input
+        type="text"
+        placeholder="Название контейнера"
+        className="input-field"
+        value={containerName}
+        onChange={(e) => setContainerName(e.target.value)}
+      />
+      <div>
+        <label><strong>Основной файл (обязательный):</strong></label>
+        <p>Это должно быть завещание в формате <strong>.pdf</strong>, <strong>.doc </strong>
+         или <strong>.docx</strong></p>
+        <input
+          type="file"
+          className="select-field"
+          accept=".pdf,.doc,.docx"
+          onChange={handleMainFileChange}
+          required
+        />
+      </div>
+      <div>
+        <label><strong>Дополнительные файлы (необязательно):</strong></label>
+      </div>
+      <input type="file" className="select-field" multiple onChange={handleAdditionalChange} />
+      <div>
+        Общий размер: {totalSizeMB.toFixed(2)} МБ (максимум 50 МБ, 20 шт.)
+      </div>
+      <div className="main-buttons">
+        <button type="submit" className="continue-button">
+          Создать контейнер
+        </button>
+      </div>
+      <div className={`error ${showModal ? 'hidden' : ''}`}>
+        {error && <div className="error-text error-animate">{error}</div>}
+      </div>
+    </form>
 
-          <div>
-            Общий размер: {totalSizeMB.toFixed(2)} МБ (максимум 50 МБ)
-          </div>
-          <div className="main-buttons">
-          <button
-            type="submit"
-          >
-            Создать контейнер
-          </button>
-        </div>
-        <div className={`error ${showModal ? 'hidden' : ''}`}>
-          {error && <div className="error-text">{error}</div>}
-        </div>
-        </form>
-        
-        <div className="hr-padding">
-          <hr></hr>
-          <hr></hr>
-          <hr></hr>
-        </div>
-        <div>
-          <div><strong>Внимание! </strong>Удаление контейнера приведёт к удалению всех завещаний,
-          в которых он имеется</div>
-          <h2>Ваши контейнеры:</h2>
-          {containers.map(container => (
-          <div key={container.id}>
-            <p><strong>Название:</strong> {container.name}</p>
-            <p><strong>Создан:</strong> {new Date(container.created_at).toLocaleString()}</p>
-            {unlockedContainers.includes(container.id) ? (
-              <ul>
-                {JSON.parse(container.file_path).map((file: any) => (
-                  <li key={file.name}>
-                    <span>{file.name}</span>
-                    <button
-                      onClick={() => handleDownload(container.id, file.name)}
-                    >
-                      Скачать
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <button
-                onClick={() => openPasswordModal('view', container.id)}
-              >
-                Показать содержимое
-              </button>
-            )}
-          <button
-            onClick={() => openPasswordModal('delete', container.id)}
-          >
+    <div className="hr-padding">
+      <hr />
+      <hr />
+      <hr />
+    </div>
+
+    <div>
+      <div>
+        <strong>Внимание! </strong>Удаление контейнера приведёт к удалению всех завещаний,
+        в которых он имеется
+      </div>
+      <h2>Ваши контейнеры:</h2>
+      {containers.map(container => (
+        <div key={container.id} className="container-entry">
+          <p><strong>Название:</strong> {container.name}</p>
+          <p><strong>Создан:</strong> {new Date(container.created_at).toLocaleString()}</p>
+          {unlockedContainers.includes(container.id) ? (
+            <ul>
+              {JSON.parse(container.file_path).map((file: any) => (
+                <li key={file.name}>
+                  <span>{file.name}</span>
+                  <button className="simple-button" onClick={() => handleDownload(container.id, file.name)}>
+                    Скачать
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <button className="simple-button" onClick={() => openPasswordModal('view', container.id)}>
+              Показать содержимое
+            </button>
+          )}
+          <button className="simple-button" onClick={() => openPasswordModal('delete', container.id)}>
             Удалить контейнер
           </button>
         </div>
       ))}
-      </div>
-      </div>
+    </div>
+  </div>
       <div className={`modal ${!showModal ? 'hidden' : ''}`}>
         {showModal && (
           <div className="modal-box">
@@ -330,7 +336,6 @@ export default function Containers() {
           </div>
         )}
       </div>
-      
     </main>
   );
 }

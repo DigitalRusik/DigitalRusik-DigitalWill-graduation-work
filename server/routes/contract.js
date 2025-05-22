@@ -104,7 +104,6 @@ router.post("/create-will", verifyToken, async (req, res) => {
 router.get('/is-executed/:ownerAddress/:contractWillId', async (req, res) => {
   const { ownerAddress, contractWillId } = req.params;
   try {
-    // Получаем адрес контракта владельца
     const result = await pool.query(
       'SELECT contract_address FROM users WHERE eth_address = $1',
       [ownerAddress]
@@ -116,7 +115,6 @@ router.get('/is-executed/:ownerAddress/:contractWillId', async (req, res) => {
     const contractAddress = result.rows[0].contract_address;
     const contract = new ethers.Contract(contractAddress, contractABI, provider);
 
-    // Получаем структуру Will по индексу
     const will = await contract.wills(parseInt(contractWillId));
     const executed = will.isExecuted;
 

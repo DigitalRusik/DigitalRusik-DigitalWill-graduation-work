@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 
-// Проверка email пользователя
+// =====Проверка email пользователя=====
 router.post('/check-email', async (req, res) => {
   const { email } = req.body;
 

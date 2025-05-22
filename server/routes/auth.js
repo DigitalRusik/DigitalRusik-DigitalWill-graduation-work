@@ -8,6 +8,7 @@ const { ethers } = require('ethers');
 const contractABI = require('../../artifacts/contracts/DigitalWill.sol/DigitalWill.json').abi;
 const provider = new ethers.providers.JsonRpcProvider("http://localhost:8545");
 
+// =====Регистрация пользователя=====
 router.post('/register', async (req, res) => {
   const { firstName, lastName, patronymic, email, password } = req.body;
 
@@ -26,7 +27,7 @@ router.post('/register', async (req, res) => {
 
     const newUser = result.rows[0];
 
-    // === Автоустановка получателя в контракте, если завещание на него уже существует ===
+    // Автоустановка получателя в контракте, если завещание на него уже существует
     try {
       const willsRes = await pool.query(
         `SELECT w.id, w.contract_will_id, w.recipient_full_name, u.private_key, u.contract_address
@@ -41,7 +42,6 @@ router.post('/register', async (req, res) => {
 
         if (!contract_address || contract_will_id == null) continue;
 
-        // Сравниваем ФИО
         const fullNameFromDB = (recipient_full_name || '').trim().toLowerCase();
         const fullNameUser = `${newUser.last_name} ${newUser.first_name} ${newUser.patronymic}`.trim().toLowerCase();
         if (fullNameFromDB && fullNameFromDB !== fullNameUser) {
@@ -159,7 +159,7 @@ router.post('/admin-login', (req, res) => {
   const { login, password } = req.body;
 
   if (login === 'admin' && password === 'admin') {
-    return res.json({ message: 'Вход успешен', role: 'admin' });
+    return res.json({ message: 'Успешный вход', role: 'admin' });
   } else {
     return res.status(401).json({ error: 'Неверный логин или пароль' });
   }

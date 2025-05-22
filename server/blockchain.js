@@ -5,7 +5,7 @@ const path = require("path");
 
 const provider = new ethers.providers.JsonRpcProvider("http://localhost:8545");
 
-// Загрузка ABI и bytecode
+// =====Загрузка ABI и bytecode=====
 const contractArtifact = JSON.parse(
   fs.readFileSync(
     path.join(__dirname, "..", "artifacts", "contracts", "DigitalWill.sol", "DigitalWill.json")
@@ -35,7 +35,7 @@ async function ensureFunds(address) {
   await tx.wait();
   console.log(`Отправлено 5 ETH на ${address}.`);
 
-  // Ждём появления средств (с перезапросом)
+  // Ожидание появления средств (с перезапросом)
   let retries = 0;
   while (retries < 10) {
     balance = await provider.getBalance(address);
@@ -51,7 +51,7 @@ async function ensureFunds(address) {
 }
 
 
-// Получить кошелек и контракт от имени пользователя
+// =====Получить кошелек и контракт от имени пользователя=====
 async function getUserContract(userId, contractAddress) {
   const result = await db.query('SELECT private_key FROM users WHERE id = $1', [userId]);
   if (result.rows.length === 0) throw new Error("Пользователь не найден");
@@ -65,7 +65,7 @@ async function getUserContract(userId, contractAddress) {
   return contract;
 }
 
-// Деплой контракта от имени пользователя (если нужно)
+// =====Деплой контракта от имени пользователя=====
 async function deployContract(userId, ...constructorArgs) {
   const result = await db.query('SELECT private_key FROM users WHERE id = $1', [userId]);
   if (result.rows.length === 0) throw new Error("Пользователь не найден");

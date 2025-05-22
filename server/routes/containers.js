@@ -91,7 +91,6 @@ router.post('/download/:containerId', async (req, res) => {
   const { userId, password, fileName } = req.body;
 
   try {
-    // Проверка пароля
     const user = await pool.query('SELECT password, encryption_key FROM users WHERE id = $1', [userId]);
     if (user.rows.length === 0) return res.status(404).json({ message: 'Пользователь не найден' });
 
@@ -147,7 +146,7 @@ router.get('/download-will/:willId', async (req, res) => {
   const { willId } = req.params;
 
   try {
-    // 0. Получаем полные данные завещания
+    // 1. Получение полных данных завещания
     const willResult = await pool.query(
       'SELECT owner, recipient, data_hash, contract_will_id FROM wills WHERE id = $1',
       [willId]
@@ -158,7 +157,7 @@ router.get('/download-will/:willId', async (req, res) => {
 
     const { owner: ownerAddress, recipient, data_hash: containerName, contract_will_id } = willResult.rows[0];
 
-    // 1. Получаем private_key получателя и contract_address владельца
+    // 2. Получение private_key получателя и contract_address владельца
     const recipientRes = await pool.query(
       'SELECT private_key FROM users WHERE email = $1',
       [recipient]
@@ -177,7 +176,7 @@ router.get('/download-will/:willId', async (req, res) => {
     }
     const contract_address = ownerRes.rows[0].contract_address;
 
-    // 2. Вызываем executeWill от имени получателя
+    // 3. Вызов executeWill от имени получателя
     const recipientWallet = new ethers.Wallet(recipientPrivateKey, provider);
     await ensureFunds(recipientWallet.address);
 
@@ -189,15 +188,6 @@ router.get('/download-will/:willId', async (req, res) => {
       return res.status(400).json({ message: 'Завещание не зарегистрировано в контракте' });
     }
 
-    // try {
-    //   await contract.callStatic.executeWill(contract_will_id);
-    //   const tx = await contract.executeWill(contract_will_id);
-    //   await tx.wait();
-    // } catch (err) {
-    //   console.error("Смарт-контракт отказал в исполнении:", err.reason || err.error?.message || err);
-    //   return res.status(403).json({ message: 'Завещание не может быть исполнено: ' + (err.reason || 'неизвестная ошибка') });
-    // }
-
     try {
       const tx = await contract.executeWill(contract_will_id);
       await tx.wait();
@@ -207,7 +197,7 @@ router.get('/download-will/:willId', async (req, res) => {
       return res.status(403).json({ message: 'Завещание ещё не разблокировано' });
     }
 
-    // 3. Получаем encryption key ВЛАДЕЛЬЦА (для дешифровки)
+    // 4. Получение encryption key владельца для дешифровки
     const userResult = await pool.query(
       'SELECT encryption_key FROM users WHERE eth_address = $1',
       [ownerAddress]
@@ -219,7 +209,7 @@ router.get('/download-will/:willId', async (req, res) => {
     const encryptionKey = userResult.rows[0].encryption_key;
     const keyBuffer = crypto.scryptSync(encryptionKey, 'salt', 32);
 
-    // 4. Получаем контейнер и файлы
+    // 5. Получение контейнера и файлов
     const containerResult = await pool.query(
       'SELECT file_path FROM containers WHERE name = $1',
       [containerName]
@@ -233,8 +223,8 @@ router.get('/download-will/:willId', async (req, res) => {
       return res.status(404).json({ message: 'Файлы в контейнере не найдены' });
     }
 
-    // 5. Формируем архив
-    const safeName = containerName.replace(/[^\w\d_-]/g, "_");
+    // 6. Формирование архива
+    const safeName = containerName.replace(/[^\w\d_-]/g, "_"); // Формирование имени для архива
     res.setHeader('Content-Disposition', `attachment; filename=${safeName}.zip`);
     res.setHeader('Content-Type', 'application/zip');
 

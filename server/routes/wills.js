@@ -68,17 +68,16 @@ router.get('/myWills', verifyToken, async (req, res) => {
     const { email, eth_address, first_name, last_name, patronymic } = result.rows[0];
     const fullName = `${last_name} ${first_name} ${patronymic}`.trim().toLowerCase();
 
-    // Получаем отправленные
+    // Получение завещаний, созданных пользователем
     const sent = await pool.query(
-      `SELECT w.*, u2.last_name || ' ' || u2.first_name || ' ' || u2.patronymic AS recipient_name
+      `SELECT w.*, w.recipient_full_name AS recipient_name
       FROM wills w
-      LEFT JOIN users u2 ON w.recipient = u2.email
       WHERE w.owner = $1
       ORDER BY w.created_at DESC`,
       [eth_address]
     );
 
-    // Получаем полученные
+    // Получение завещаний на имя пользователя
     const receivedRes = await pool.query(
       `SELECT w.*, u1.last_name || ' ' || u1.first_name || ' ' || u1.patronymic AS owner_name
       FROM wills w
@@ -89,7 +88,7 @@ router.get('/myWills', verifyToken, async (req, res) => {
     );
 
     const filteredReceived = receivedRes.rows.filter(will => {
-      if (!will.recipient_full_name) return true; // допустим, ФИО не задано
+      if (!will.recipient_full_name) return true;
       return will.recipient_full_name.trim().toLowerCase() === fullName;
     });
 

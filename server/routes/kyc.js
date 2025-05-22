@@ -6,13 +6,11 @@ const path = require('path');
 const fs = require('fs');
 const verifyToken = require('../verifyToken');
 
-// Убедимся, что папка существует
 const uploadDir = path.join(__dirname, '..', 'uploads', 'kyc');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// Настройка multer
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, uploadDir);
@@ -25,12 +23,11 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// =====Загрузка документов на верификацию=====
+// =====Загрузка изображения с документом на верификацию=====
 router.post('/upload', verifyToken, upload.single('document'), async (req, res) => {
   try {
     const userId = req.user.id;
     const filePath = path.join('uploads', 'kyc', req.file.filename);
-        // Проверяем, есть ли уже необработанная заявка
     const pendingCheck = await pool.query(`
     SELECT * FROM kyc_requests WHERE user_id = $1 AND status = 'pending'
     `, [userId]);
@@ -39,7 +36,6 @@ router.post('/upload', verifyToken, upload.single('document'), async (req, res) 
     return res.status(400).json({ message: 'Заявка уже отправлена и ожидает рассмотрения' });
     }
     
-    // Сохраняем запись о заявке
     await pool.query(
       `INSERT INTO kyc_requests (user_id, document_path, status)
        VALUES ($1, $2, 'pending')`,
@@ -53,7 +49,7 @@ router.post('/upload', verifyToken, upload.single('document'), async (req, res) 
   }
 });
 
-// =====Получение всех KYC-заявок=====
+// =====Получение всех заявок на авторизацию=====
 router.get('/requests', async (req, res) => {
   try {
     const result = await pool.query(`

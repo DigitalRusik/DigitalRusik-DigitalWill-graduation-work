@@ -23,11 +23,14 @@ export default function Wills() {
   const [modalError, setModalError] = useState('');
   const [executedFlags, setExecutedFlags] = useState<{ [id: number]: boolean }>({});
   const router = useRouter();
+  const [username, setUsername] = useState('');
 
 
   useEffect(() => {
     const fetchWills = async () => {
       const storedUser = localStorage.getItem('user');
+      const parsed = JSON.parse(storedUser);
+      setUsername(parsed.fullName || 'Пользователь');
       const token = localStorage.getItem('token');
       if (!storedUser || !token) {
         router.push('/login');
@@ -77,7 +80,7 @@ export default function Wills() {
     return unlockDate <= today;
   };
   
-  //Скачивание завещания
+  //Скачивание файлов завещания
   const confirmDownload = async () => {
     const token = localStorage.getItem('token');
     const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -125,49 +128,60 @@ export default function Wills() {
   };
 
 
+
   return (
-    <main className="main-container">
-      <div className="head-page">
-        <h1>Мои завещания</h1>
-      </div>
-      <div>
-      <hr></hr>
-      </div>
-      <div className="div-body">
-        <div className="exit-button">
-          <Link href="/dashboard">
-            <button>
-              Назад на главную
-            </button>
-          </Link>
-        </div>
+    <main className="page-container">
+  <div className="header-bar">
+    <div className="header-left">
+      <Link href="/dashboard">
+        <img src="/images/logo.png" alt="Логотип" className="header-logo" />
+      </Link>
+    </div>
+    <div className="header-center">
+      <h1>Мои завещания</h1>
+    </div>
+    <div className="header-right">
+      <span>{username}</span>
+    </div>
+  </div>
+  <div>
+    <hr />
+  </div>
+  <div className="div-body">
+    <div className="exit-button">
+      <Link href="/dashboard">
+        <button>
+          Назад на главную
+        </button>
+      </Link>
+    </div>
 
-        {error && <div className="error-text">{error}</div>}
+    {error && <div className="error-text error-animate">{error}</div>}
 
-        {/* Созданные завещания */}
-        <section>         
-          {Array.isArray(createdWills) && createdWills.length === 0 ? (
-            <p></p>
-          ) : (
-            <ul>
-              <h2>Созданные завещания</h2>
-              {Array.isArray(createdWills) && createdWills.map((will: any) => (
-                <li key={will.id}>
-                  <p><strong>Наследник: </strong>{will.recipient_name}</p>
-                  <p><strong>Контейнер: </strong>{will.data_hash}</p>
-                  <p><strong>Дата разблокировки: </strong> {new Date(will.unlock_time * 1000).toLocaleDateString('ru-RU')}</p>
-                </li>
-              ))}
-              <hr></hr>
-              <hr></hr>
-              <hr></hr>
-            </ul>
-          )}
-        </section>
+    {/* Созданные завещания */}
+    <section>
+      {Array.isArray(createdWills) && createdWills.length === 0 ? (
+        <p></p>
+      ) : (
+        <ul>
+          <h2 className="text-margin">Созданные завещания:</h2>
+          {Array.isArray(createdWills) && createdWills.map((will: any) => (
+            <div key={will.id} className="will-entry">
+              <p><strong>Наследник: </strong>{will.recipient_name}</p>
+              <p><strong>Контейнер: </strong>{will.data_hash}</p>
+              <p><strong>Дата разблокировки: </strong> {new Date(will.unlock_time * 1000).toLocaleDateString('ru-RU')}</p>
+            </div>
+          ))}
+          <hr />
+          <hr />
+          <hr />
+        </ul>
+      )}
+    </section>
 
-        {/* Завещания, оставленные пользователю */}
-        <section>
-          <h2>Завещания, оставленные вам</h2>
+    {/* Завещания, оставленные пользователю */}
+    <section>
+          <h2 className="text-margin">Завещания, оставленные вам:</h2>
           {Array.isArray(receivedWills) && receivedWills.length === 0 ? (
             <p>Нет завещаний</p>
           ) : (

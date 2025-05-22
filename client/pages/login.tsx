@@ -54,46 +54,45 @@ export default function Login() {
 
   return (
     <main className="main-container">
-      <div className="head-page">
-        <h1>Вход в аккаунт</h1>
-      </div>
-      <hr></hr>
-      <div className="center-content">
-        {error && <p className="error-text">{error}</p>}
-        <form onSubmit={handleLogin} className="w-full max-w-md space-y-4">
-          <input
-            name="email"
-            type="email"
-            placeholder="Эл. почта"
-            className="w-full border rounded p-2"
-            value={formData.email}
-            onChange={handleChange}
-            required
-          />
-          <input
-            name="password"
-            type="password"
-            placeholder="Пароль"
-            className="w-full border rounded p-2"
-            value={formData.password}
-            onChange={handleChange}
-            required
-          />
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="bg-blue-600 text-white px-4 py-2 rounded-xl w-full disabled:opacity-50"
-          >
-            {isLoading ? 'Вход...' : 'Войти'}
-          </button>
-        </form>
-        <div className="exist-acc">
-          <button
-          onClick={() => router.push('/')}
-          className="mt-6 text-blue-600 underline w-full text-center">
-          Создать аккаунт
-        </button>
+      <img src="/images/logo.png" alt="Логотип" className="register-logo" />
+      <div className="register-card">
+        <div className="register-header">
+          <h1>Вход в учётную запись</h1>
         </div>
+        <hr />
+        <div className="register-body">
+          {error && <p className="error-text error-animate">{error}</p>}
+          <form onSubmit={handleLogin} className="space-y-4">
+            <input
+              name="email"
+              type="email"
+              placeholder="Эл. почта"
+              value={formData.email}
+              onChange={handleChange}
+              required
+            />
+            <input
+              name="password"
+              type="password"
+              placeholder="Пароль"
+              value={formData.password}
+              onChange={handleChange}
+              required
+            />
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="register-button"
+            >
+              {isLoading ? 'Вход...' : 'Войти'}
+            </button>
+          </form>
+        </div>
+      </div>
+      <div className="exist-acc">
+        <button onClick={() => router.push('/')}>
+          Создание учётной записи
+        </button>
       </div>
     </main>
   );

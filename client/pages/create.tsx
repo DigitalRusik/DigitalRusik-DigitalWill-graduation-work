@@ -16,8 +16,8 @@ export default function CreateWill() {
   const [isRecipientRegistered, setIsRecipientRegistered] = useState(false);
   const [userVerified, setUserVerified] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
-
-
+  const [selectedContainerName, setSelectedContainerName] = useState('');
+  const [username, setUsername] = useState('');
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -25,6 +25,7 @@ export default function CreateWill() {
       router.push('/login');
     } else {
       const user = JSON.parse(storedUser);
+      setUsername(user.fullName || 'Пользователь');
       const userId = user.id;
         if (userId) {
           fetchContainers(userId);
@@ -175,93 +176,104 @@ export default function CreateWill() {
   //----------------------------------------------------------------------------
 
   return (
-    <main className="main-container">
-      <div className="head-page">
-        <h1>Создание завещания</h1>
+    <main className="page-container">
+  <div className="header-bar">
+    <div className="header-left">
+      <Link href="/dashboard">
+        <img src="/images/logo.png" alt="Логотип" className="header-logo" />
+      </Link>
+    </div>
+    <div className="header-center">
+      <h1>Создание завещания</h1>
+    </div>
+    <div className="header-right">
+      <span>{username}</span>
+    </div>
+  </div>
+  <div>
+    <hr />
+  </div>
+  <div className="div-body">
+    <div className="exit-button">
+      <Link href="/dashboard">
+        <button>
+          Обратно на главную страницу
+        </button>
+      </Link>
+    </div>
+    {!userVerified ? (
+      <div className="center-will">
+        <p>Ваш профиль не подтверждён. Вы не можете создавать завещания.
+          Пройдите верификацию, перейдя по кнопке на нужную страницу.
+        </p>
+        <Link href="/verification">
+          <button className="verify-button">
+            Пройти верификацию
+          </button>
+        </Link>
       </div>
-      <div>
-          <hr></hr>
-      </div>
-      <div className="div-body">
-        <div className="exit-button">
-          <Link href="/dashboard">
-            <button>
-              Обратно на главную страницу
+    ) : (
+      <p></p>
+    )}
+
+    <div className="center-will">
+      {userVerified && (
+        <form onSubmit={handleContinue} className="will-form">
+          <div>
+            <label>Адрес электронной почты получателя:</label>
+            <input
+              type="email"
+              placeholder="Email получателя"
+              className="input-field"
+              value={recipient}
+              onChange={(e) => {
+                setRecipient(e.target.value);
+                setCheckResult(null);
+              }}
+            />
+            <button className="check-button" type="button" onClick={handleCheckRecipient}>
+              Проверить
             </button>
-          </Link>
-        </div>
-        {!userVerified ? (
-          <div className="center-will">
-            <p>Ваш профиль не подтверждён. Вы не можете создавать завещания.
-              Пройдите верификацию, перейдя по кнопке на нужную страницу.
-            </p>
-            <Link href="/kyc">
-                <button>
-                  Пройти верификацию
-                </button>
-              </Link>
+            {checkResult && <p>{checkResult}</p>}
           </div>
-        ) : (
-          <p>Ваш аккаунт подтверждён! Вы можете создавать завещание.</p>
-        )}
 
-        <div className="center-will">
-          {userVerified && (
-            <form onSubmit={handleContinue} className="space-y-4">
-              <div>
-                <label>Адрес электронной почты получателя:</label>
-                <input
-                  type="email"
-                  placeholder="Email получателя"
-                  value={recipient}
-                  onChange={(e) => {
-                    setRecipient(e.target.value);
-                    setCheckResult(null);
-                  }}
-                />
-                <button 
-                  type="button"
-                  onClick={handleCheckRecipient}
-                >
-                  Проверить
-                </button>
-                {checkResult && <p>{checkResult}</p>}
-              </div>
-
-              <div>
-                <label>Выберите контейнер: </label>
-                <select
-                  value={selectedContainer}
-                  onChange={(e) => setSelectedContainer(e.target.value)}
-                >
-                  <option value="">-- Выберите контейнер --</option>
-                  {containers.map((container) => (
-                    <option key={container.id} value={container.id}>
-                      {container.name}
-                    </option>
-                  ))}
-              </select>
-            </div>
-
-            <div>
-              <label>Дата разблокировки: </label>
-              <input
-                type="date"
-                placeholder="Дата разблокировки"
-                value={unlockDate}
-                onChange={(e) => setUnlockDate(e.target.value)}
-              />
-            </div> 
-            <button type="submit">
-              Продолжить
-            </button>
-          </form>
-          )}
-          <div className="error-text">    
-              {error && <div>{error}</div>}
+          <div>
+            <label>Выберите контейнер: </label>
+            <select
+              value={selectedContainer}
+              onChange={(e) => {
+                const selectedId = e.target.value;
+                setSelectedContainer(selectedId);
+                const container = containers.find((c) => String(c.id) === selectedId);
+                setSelectedContainerName(container?.name || '');
+              }}
+            >
+              <option value="">-- Выберите контейнер --</option>
+              {containers.map((container) => (
+                <option key={container.id} value={container.id}>
+                  {container.name}
+                </option>       
+              ))}
+            </select>
           </div>
-        </div>
-      </div>
+
+          <div>
+            <label>Дата разблокировки: </label>
+            <input
+              type="date"
+              placeholder="Дата разблокировки"
+              value={unlockDate}
+              onChange={(e) => setUnlockDate(e.target.value)}
+            />
+          </div>
+          <button type="submit" className="continue-button">
+            Продолжить
+          </button>
+        </form>
+      )}
+      {error && <p className="error-text error-animate">{error}</p>}
+    </div>
+  </div>
 
       {/*Модальное окно подтверждения завещания */}
       <div className={`modal ${!showModal ? 'hidden' : ''}`}>
@@ -281,7 +293,7 @@ export default function CreateWill() {
             )}
           </p>
             <p><strong>Эл. почта получателя: </strong> {recipient}</p>
-            <p><strong>Контейнер: </strong> {selectedContainer}</p>
+            <p><strong>Контейнер: </strong> {selectedContainerName}</p>
             <p><strong>Дата разблокировки(год, месяц, день): </strong> {unlockDate}</p>
           </div>
           {!isCreating ? (

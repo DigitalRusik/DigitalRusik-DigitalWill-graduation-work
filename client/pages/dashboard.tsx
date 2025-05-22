@@ -25,55 +25,64 @@ export default function Dashboard() {
   
 
   return (
-    <main className="main-container">
-      <div className="head-page">
-        <h1>Добро пожаловать, {username}!</h1>
+    <main className="page-container">
+      <div className="header-bar">
+        <div className="header-left">
+          <Link href="/dashboard">
+            <img src="/images/logo.png" alt="Логотип" className="header-logo" />
+          </Link>
+        </div>
+        <div className="header-center">
+          <h1>Главная</h1>
+        </div>
+        <div className="header-right">
+          <span>{username}</span>
+        </div>
       </div>
       <div>
-        <hr></hr>
+        <hr />
       </div>
       <div className="div-body">
-        <button
-          onClick={() => {
-            localStorage.removeItem('user');
-            localStorage.removeItem("token");
-            router.push('/login');
-          }}
-          className="exit-button"
-        >
-          Выйти
-        </button>
-        <div className="main-buttons">
+        <div className="exit-button">
+          <button
+            onClick={() => {
+              localStorage.removeItem('user');
+              localStorage.removeItem("token");
+              router.push('/login');
+            }}
+          >Выйти</button>
+        </div>
+        
+        <div className="dashboard-buttons">
           <Link href="/create">
             <button>
               Создать завещание
             </button>
           </Link>
         </div>
-        <div className="main-buttons">
+        <div className="dashboard-buttons">
           <Link href="/containers">
             <button>
               Мои контейнеры
             </button>
           </Link>
         </div>
-        <div className="main-buttons">
+        <div className="dashboard-buttons">
           <Link href="/wills">
             <button>
               Мои завещания
             </button>
           </Link>
         </div>
-        <div className="main-buttons">
+        <div className="dashboard-buttons">
           {!verified && (
             <Link href="/verification">
-              <button>
+              <button className="verify-button">
                 Пройти верификацию
               </button>
             </Link>
           )}
         </div>
-        
       </div>
     </main>
   );

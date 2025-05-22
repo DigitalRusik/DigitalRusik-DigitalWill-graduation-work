@@ -1,10 +1,31 @@
-import { useState } from 'react';
 import axios from 'axios';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
+
+
 
 export default function Verification() {
   const [file, setFile] = useState<File | null>(null);
+  const [username, setUsername] = useState('');
+
   const [status, setStatus] = useState('');
+  const router = useRouter();
+
+  useEffect(() => {
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) {
+        router.push('/login');
+      } else {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          setUsername(parsedUser.fullName || 'Пользователь');
+        } catch (err) {
+          console.error('Ошибка при парсинге пользователя:', err);
+          router.push('/login');
+        }
+      }
+    }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,34 +54,44 @@ export default function Verification() {
   };
 
   return (
-    <main className="main-container">
-      <div className="head-page">
-        <h1 className="text-xl font-bold mb-4">Верификация личности</h1>
-      </div>
-      <div>
-        <hr></hr>
-      </div>
-      <div className="div-body">
-        <div className="exit-button">
-          <Link href="/dashboard">
-            <button>
-              Обратно на главную страницу
-            </button>
-          </Link>
-        </div>     
-        <p className="text-gray-700 mb-2">
-          Загрузите фото себя с паспортом. Изображение должно быть четкое
-          , в нём должно быть хорошо видно ваше лицо и данные паспорта. Допустимые форматы: <b>PNG, JPG, PDF</b>.
-        </p>
-        <form onSubmit={handleSubmit}>
-          <input type="file" accept=".png,.jpg,.jpeg,.pdf" 
-            onChange={(e) => setFile(e.target.files?.[0] || null)} required />
-          <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded ml-4">
-            Отправить
-          </button>
-        </form>
-        {status && <p className="mt-4">{status}</p>}
-      </div>
-    </main>
+    <main className="page-container">
+  <div className="header-bar">
+    <div className="header-left">
+      <Link href="/dashboard">
+        <img src="/images/logo.png" alt="Логотип" className="header-logo" />
+      </Link>
+    </div>
+    <div className="header-center">
+      <h1>Верификация личности</h1>
+    </div>
+    <div className="header-right">
+      <span>{username}</span>
+    </div>
+  </div>
+  <div>
+    <hr />
+  </div>
+  <div className="div-body">
+    <div className="exit-button">
+      <Link href="/dashboard">
+        <button>
+          Обратно на главную страницу
+        </button>
+      </Link>
+    </div>
+    <p>
+      Загрузите фото себя с паспортом. Изображение должно быть четкое, в нём должно быть хорошо видно ваше лицо и данные паспорта.
+      Допустимые форматы: <b>PNG, JPG, PDF</b>.
+    </p>
+    <form onSubmit={handleSubmit} className="verify-form">
+      <input type="file" accept=".png,.jpg,.jpeg,.pdf" onChange={(e) => setFile(e.target.files?.[0] || null)} required />
+      <button type="submit" className="verify-button-submit">
+        Отправить
+      </button>
+    </form>
+    {status && <p className="verify-status">{status}</p>}
+  </div>
+</main>
+
   );
 }

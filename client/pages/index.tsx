@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 
 export default function Register() {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -22,7 +23,6 @@ export default function Register() {
     }
   }, []);
 
-  const [isLoading, setIsLoading] = useState(false);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,12 +53,14 @@ export default function Register() {
   };
   
   return (
-    <main className="main-container">
-      <div className="head-page">
-      <h1>Регистрация</h1>
+  <main className="main-container">
+  <img src="/images/logo.png" alt="Логотип" className="register-logo" />
+    <div className="register-card">
+      <div className="register-header">
+        <h1>Регистрация</h1>
       </div>
-      <hr></hr>
-      <div className="center-content">
+      <hr />
+      <div className="register-body">
         {error && <p className="error-text">{error}</p>}
         <form onSubmit={handleRegister} className="space-y-4">
           <input
@@ -100,20 +102,17 @@ export default function Register() {
             onChange={handleChange}
             required
           />
-          <button
-            type="submit"
-            disabled={isLoading}
-          >
+          <button type="submit" className="register-button" disabled={isLoading}>
             {isLoading ? 'Регистрация...' : 'Зарегистрироваться'}
           </button>
         </form>
-        <div className="exist-acc">
-          <button
-          onClick={() => router.push('/login')}>
-          Войти в существующий аккаунт
-        </button>
-        </div>
       </div>
-    </main>
+    </div>
+    <div className="exist-acc">
+          <button onClick={() => router.push('/login')}>
+            Войти в существующий аккаунт
+          </button>
+    </div>
+  </main>
   );
 }

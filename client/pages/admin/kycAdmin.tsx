@@ -54,32 +54,29 @@ export default function KycAdminPage() {
 
 
   return (
-    <div className="p-6">
-      <h1 className="text-xl font-bold mb-4">Заявки на верификацию</h1>
+    <div>
+      <h1>Заявки на верификацию</h1>
       <button
         onClick={handleLogout}
-        className="bg-gray-500 text-white px-4 py-2 rounded"
       >
         Выйти
       </button>
       {error && <p className="error-text">{error}</p>}
       {requests.map((req) => (
-        <div key={req.id} className="border p-4 mb-4 rounded shadow">
+        <div key={req.id}>
           <p><b>Пользователь:</b> {req.last_name} {req.first_name} {req.patronymic} ({req.email})</p>
           <p><b>Статус:</b> {req.status}</p>
-          <a href={`http://localhost:5000/${req.document_path}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">
+          <a href={`http://localhost:5000/${req.document_path}`} target="_blank" rel="noopener noreferrer">
             Просмотреть документ
           </a>
           {req.status === 'pending' && (
             <div>
               <button
-                onClick={() => handleApprove(req.id)}
-                className="ml-4 bg-green-600 text-white px-4 py-1 rounded">
+                onClick={() => handleApprove(req.id)}>
                 Подтвердить
               </button>
               <button
-                onClick={() => handleReject(req.id)}
-                className="ml-2 bg-red-600 text-white px-4 py-1 rounded">
+                onClick={() => handleReject(req.id)}>
                 Отклонить
               </button>
             </div>
